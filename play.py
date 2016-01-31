@@ -38,30 +38,33 @@ def playVideo():
     1 == 1
 
 def fileInput():
-    filename = raw_input('Enter filename, including extension.')
+    #filename = raw_input('Enter filename, including extension.')
+    filename = "test.csv"
     data = open(filename, 'rb')
     reader = csv.reader(data)
     rowNum = 0
     objectIn = 0
+    objHeight = 0
+    objPos = 0
+    pixels = []
+    pixelsRemaining = -1
+    readyToPlay = False
 
-    for row in reader:
-        objHeight = 0
-        objPos = 0
-        pixels = []
-        pixelsRemaining = -1
+    for row in reader: #Defines the current row
 
         #Gets header data
         if (rowNum == 0):
             roomWidth = int(row[0])
             roomHeight = int(row[1])
             numObjects = int(row[2]) #Crash if this isn't 1 or more
+            rowNum += 1
 
         #Reads in objects
         elif (objectIn < numObjects):
             if (pixelsRemaining == -1):
-                objWidth = row[0]
-                objHeight = row[1]
-                objPos = (row[2], row[3])
+                objWidth = int(row[0])
+                objHeight = int(row[1])
+                objPos = (int(row[2]), int(row[-1]))
                 pixelsRemaining = objWidth * objHeight
             else:
                 if (pixelsRemaining != 0):
@@ -70,15 +73,17 @@ def fileInput():
                     pixelsRemaining -= 1
                 else:
                     pixelsRemaining = -1
-                    objects[objectIn] = Object(objWidth, objHeight, objPos, pixels)
+                    objects.append(Object(objWidth, objHeight, objPos, pixels))
                     objectIn += 1
-
+            rowNum += 1
         #All objects are now read in
         else:
+            readyToPlay = True
+
+        if (readyToPlay):
+            data.close()
             playVideo(reader)
 
         rowNum += 1
-
-        print row
 
 fileInput()
