@@ -198,7 +198,10 @@ def fileInput(sim):
                 objPos = (int(row[2]), int(row[-1]))
                 pixelsRemaining = objWidth * objHeight
             else:
-                pixelColor = (int(row[0]), int(row[1]), int(row[2]))
+                if (len(row) == 1):
+                    pixelColor = (int(row[0]), int(row[0]), int(row[0]))
+                else:
+                    pixelColor = (int(row[0]), int(row[1]), int(row[2]))
                 pixels.append(pixelColor)
                 if (pixelsRemaining > 1):
                     pixelsRemaining -= 1
