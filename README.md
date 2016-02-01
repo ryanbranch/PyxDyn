@@ -75,3 +75,9 @@ After the 12th line of pixel data, the next line should be another object defini
 
 ### Credits
 Anyone from who I have borrowed code will be credited here.
+
+### To Do
+ - Maybe be more direct and use .bmp instead of .png once I learn more about that formatting
+ - Change "Object" class to "Particle" class
+ - Create "Bond" class
+ - "Object" class should then be created, representing network of particles interconnected by bonds

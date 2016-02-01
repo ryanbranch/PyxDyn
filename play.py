@@ -1,10 +1,12 @@
+import PIL
+
 __author__ = 'Ryan Branch'
 import csv
-import Image
+from PIL import Image, ImageTk
 import os
 import errno
 import sys
-import _tkinter
+from Tkinter import *
 
 #Some global constants are defined here
 BACKGROUND_COLOR = (255, 255, 255)
@@ -12,13 +14,15 @@ BACKGROUND_COLOR = (255, 255, 255)
 #A class containing various variables central to the entire program
 class Room:
     #MEMBER VARIABLES
-    # backgroundColor - the RGB value of the color of the window's background
+    # backgroundColor - the RGB value of the color of the room's background
     # transparentColor - the RGB value to be treated as transparent
-    # roomWidth - the width of the window, in pixels
-    # roomHeight - the height of the window, in pixels
+    # roomWidth - the width of the room, in pixels
+    # roomHeight - the height of the room, in pixels
     # fileName - the name of the file being used for simulation input
     # folderName - the name of the folder in which to store data such as images
     # objects - a list containing all of the objects
+    # root - Tk root widget for the program
+    # room - the root's canvas, on which visuals are displayed
 
     #Default constructor
     def __init__(self):
@@ -29,6 +33,8 @@ class Room:
         self.fileName = "input.csv"
         self.folderName = "input_csv"
         self.objects = []
+        self.root = Tk()
+        self.root.resizable(0,0)
 
     #Set function for backgroundColor
     def setBackgroundColor(self, colorIn):
@@ -54,6 +60,14 @@ class Room:
     def setFolderName(self, nameIn):
         self.folderName = nameIn
 
+    #Set function for room
+    def setRoom(self, roomIn):
+        self.room = roomIn
+
+    #Get function for room
+    def getRoom(self):
+        return self.room
+
     #Function to add an object to the end of "objects"
     def addObject(self, objectIn):
         self.objects.append(objectIn)
@@ -75,7 +89,7 @@ class Room:
         return self.roomWidth
 
     #Get function for roomHeight
-    def getRoomWidth(self):
+    def getRoomHeight(self):
         return self.roomHeight
 
     #Get function for fileName
@@ -85,6 +99,10 @@ class Room:
     #Get function for folderName
     def getFolderName(self):
         return self.folderName
+
+    #Get function for root
+    def getRoot(self):
+        return self.root
 
     #Makes a directory with the name folderName, if one doesn't already exist
     def makeFolder(self):
@@ -99,7 +117,7 @@ class Room:
         for obj in self.objects:
             w = obj.getWidth()
             h = obj.getHeight()
-            tempImage = Image.new('RGB', (w,h))
+            tempImage = PIL.Image.new('RGB', (w,h))
             pixels = tempImage.load()
             for y in range(h):
                 for x in range(w):
@@ -110,6 +128,7 @@ class Room:
                            "_" +
                            self.fileName +
                            ".png")
+            self.image = ImageTk.PhotoImage(tempImage)
 
 #A class describing any object that can be displayed on the screen
 class Object:
@@ -135,6 +154,7 @@ class Object:
         self.appearance = []
         self.isVisible = True
         self.identifier = 0
+        self.image = ImageTk.PhotoImage(image = None)
 
     #Constructor Method
     def __init__(self, width, height, pos, appearance, id):
@@ -144,6 +164,11 @@ class Object:
         self.appearance = appearance
         self.isVisible = True
         self.identifier = id
+        self.image = ImageTk.PhotoImage(image = None)
+
+    #Get function for image
+    def getImage(self):
+        return self.image
 
     #Get function for width
     def getWidth(self):
@@ -156,6 +181,14 @@ class Object:
     #Get function for pos
     def getPos(self):
         return self.pos
+
+    #Get function for x-coordinate of pos
+    def getX(self):
+        return self.pos[0]
+
+    #Get function for y-coordinate of pos
+    def getY(self):
+        return self.pos[1]
 
     #Get function for isVisible
     def getIsVisible(self):
@@ -189,7 +222,6 @@ def fileInput(sim):
             sim.setRoomHeight(int(row[1]))
             numObjects = int(row[2]) #Crash if this isn't 1 or more
             rowNum += 1
-
         #Reads in objects
         elif (objectIn < numObjects):
             if (pixelsRemaining == -1):
@@ -202,7 +234,9 @@ def fileInput(sim):
                     pixelColor = (int(row[0]), int(row[0]), int(row[0]))
                 else:
                     pixelColor = (int(row[0]), int(row[1]), int(row[2]))
+
                 pixels.append(pixelColor)
+
                 if (pixelsRemaining > 1):
                     pixelsRemaining -= 1
                 else:
@@ -225,11 +259,14 @@ def fileInput(sim):
             data.close()
             return rowNum
 
-def playVideo(nextLine):
+def playVideo(sim):
+
+    sim.getRoot().mainloop()
     print"Video would be played here."
 
 def main():
     simulation = Room()
+
     if (len(sys.argv) == 2):
         simulation.setFileName(sys.argv[1])
         tempName = ""
@@ -239,9 +276,18 @@ def main():
             else:
                 tempName += char
         simulation.setFolderName(tempName)
+
     nextLine = fileInput(simulation)
     simulation.buildImages()
-    playVideo(nextLine)
-    #window = _tkinter.Canvas(root, width = roomWidth, height = roomHeight)
+    simulation.getRoot().wm_title(simulation.getFileName())
+    simulation.room = Canvas(simulation.getRoot(),
+                             width = simulation.getRoomWidth(),
+                             height = simulation.getRoomHeight())
+    for obj in simulation.objects:
+        simulation.getRoom().create_image(obj.getX(),
+                                          obj.getY(),
+                                          anchor = NW,
+                                          image = obj.getImage())
+    playVideo(simulation)
 
 main()
