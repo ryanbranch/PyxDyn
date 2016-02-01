@@ -13,4 +13,5 @@
 255,0,0
 255,255,255
 1,1,1,1
-0,0,0
+128,128,128
+This row separates the metadata from the "video" content.
