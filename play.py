@@ -183,9 +183,6 @@ def fileInput(sim):
     readyToPlay = False
 
     for row in reader: #Defines the current row
-        print("objectIn: " + str(objectIn))
-        print("numObjects: " + str(numObjects))
-        print("row: " + str(rowNum))
         #Gets header data
         if (rowNum == 0):
             sim.setRoomWidth(int(row[0]))
@@ -195,11 +192,9 @@ def fileInput(sim):
 
         #Reads in objects
         elif (objectIn < numObjects):
-            print("pixels remaining: " + str(pixelsRemaining))
             if (pixelsRemaining == -1):
                 objWidth = int(row[0])
                 objHeight = int(row[1])
-                print("setting width and height to " + str(objHeight) + ", " + str(objWidth))
                 objPos = (int(row[2]), int(row[-1]))
                 pixelsRemaining = objWidth * objHeight
             else:
