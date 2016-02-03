@@ -6,7 +6,8 @@ from PIL import Image, ImageTk
 import os
 import errno
 import sys
-from Tkinter import *
+import Tkinter
+#from Tkinter import *
 
 #Some global constants are defined here
 BACKGROUND_COLOR = (255, 255, 255)
@@ -23,6 +24,9 @@ class Room:
     # objects - a list containing all of the objects
     # root - Tk root widget for the program
     # room - the root's canvas, on which visuals are displayed
+    # labels - a list of Tkinter Label objects stored here so that the
+    #          references are saved and the images can be displayed
+    #          NOTE: This is not currently in use.
 
     #Default constructor
     def __init__(self):
@@ -33,32 +37,70 @@ class Room:
         self.fileName = "input.csv"
         self.folderName = "input_csv"
         self.objects = []
-        self.root = Tk()
+        self.root = Tkinter.Tk()
         self.root.resizable(0,0)
+        #self.labels = [] NOTE: This is not currently in use.
+
+    """
+    #Wrote this first but I'm thinking of just keeping the labels as a member
+     variable of the "object" class instead.
+
+    #Function to add a label to the end of "labels"
+    def addLabel(self, labelIn):
+        self.labels.append(labelIn)
+
+    #Function to return the label at a given index of "labels"
+    def getLabel(self, index):
+        return self.labels[index]
+    """
 
     #Set function for backgroundColor
     def setBackgroundColor(self, colorIn):
         self.backgroundColor = colorIn
 
+    #Get function for backgroundColor
+    def getBackgroundColor(self):
+        return self.backgroundColor
+
     #Set function for transparentColor
     def setTransparentColor(self, colorIn):
         self.transparentColor = colorIn
+
+    #Get function for transparentColor
+    def getTransparentColor(self):
+        return self.transparentColor
 
     #Set function for roomWidth
     def setRoomWidth(self, widthIn):
         self.roomWidth = widthIn
 
+    #Get function for roomWidth
+    def getRoomWidth(self):
+        return self.roomWidth
+
     #Set function for roomHeight
     def setRoomHeight(self, heightIn):
         self.roomHeight = heightIn
+
+    #Get function for roomHeight
+    def getRoomHeight(self):
+        return self.roomHeight
 
     #Set function for fileName
     def setFileName(self, nameIn):
         self.fileName = nameIn
 
+    #Get function for fileName
+    def getFileName(self):
+        return self.fileName
+
     #Set function for folderName
     def setFolderName(self, nameIn):
         self.folderName = nameIn
+
+    #Get function for folderName
+    def getFolderName(self):
+        return self.folderName
 
     #Set function for room
     def setRoom(self, roomIn):
@@ -76,29 +118,9 @@ class Room:
     def getObject(self, index):
         return self.objects[index]
 
-    #Get function for backgroundColor
-    def getBackgroundColor(self):
-        return self.backgroundColor
-
-    #Get function for transparentColor
-    def getTransparentColor(self):
-        return self.transparentColor
-
-    #Get function for roomWidth
-    def getRoomWidth(self):
-        return self.roomWidth
-
-    #Get function for roomHeight
-    def getRoomHeight(self):
-        return self.roomHeight
-
-    #Get function for fileName
-    def getFileName(self):
-        return self.fileName
-
-    #Get function for folderName
-    def getFolderName(self):
-        return self.folderName
+    #Function to return the entire "objects" list
+    def getObjects(self):
+        return self.objects
 
     #Get function for root
     def getRoot(self):
@@ -128,7 +150,7 @@ class Room:
                            "_" +
                            self.fileName +
                            ".png")
-            self.image = ImageTk.PhotoImage(tempImage)
+            obj.image = ImageTk.PhotoImage(tempImage)
 
 #A class describing any object that can be displayed on the screen
 class Object:
@@ -145,7 +167,7 @@ class Object:
         # image - an image representing the appearance list
         # identifier - an integer representing the object.  Each object should
         #              have a unique id, counting up from 1
-
+        # label - a Tkinter Label object used to keep a reference to the image
     #Default constructor
     def __init__(self):
         self.width = 0
@@ -154,7 +176,7 @@ class Object:
         self.appearance = []
         self.isVisible = True
         self.identifier = 0
-        self.image = ImageTk.PhotoImage(image = None)
+        self.image = ImageTk.PhotoImage(image=None)
 
     #Constructor Method
     def __init__(self, width, height, pos, appearance, id):
@@ -164,7 +186,18 @@ class Object:
         self.appearance = appearance
         self.isVisible = True
         self.identifier = id
-        self.image = ImageTk.PhotoImage(image = None)
+        #HEREHER
+
+        #im = Image.open("input_csv/1_input.csv.png")
+        #self.image = ImageTk.PhotoImage(im)
+
+    #Get function for label
+    def getLabel(self):
+        return self.label
+
+    #Set function for label
+    def setLabel(self, labelIn):
+        self.label = labelIn
 
     #Get function for image
     def getImage(self):
@@ -242,11 +275,11 @@ def fileInput(sim):
                 else:
                     pixelsRemaining = -1
                     appearance = pixels[:]
-                    sim.objects.append(Object(objWidth,
-                                          objHeight,
-                                          objPos,
-                                          appearance,
-                                          (objectIn + 1)))
+                    sim.addObject(Object(objWidth,
+                                  objHeight,
+                                  objPos,
+                                  appearance,
+                                  (objectIn + 1)))
                     objectIn += 1
                     del pixels[:]
             rowNum += 1
@@ -277,17 +310,29 @@ def main():
                 tempName += char
         simulation.setFolderName(tempName)
 
-    nextLine = fileInput(simulation)
+    fileInput(simulation)
+
     simulation.buildImages()
     simulation.getRoot().wm_title(simulation.getFileName())
-    simulation.room = Canvas(simulation.getRoot(),
-                             width = simulation.getRoomWidth(),
-                             height = simulation.getRoomHeight())
-    for obj in simulation.objects:
+    simulation.setRoom(Tkinter.Canvas(simulation.getRoot(),
+                                      width=simulation.getRoomWidth(),
+                                      height=simulation.getRoomHeight()))
+    for obj in simulation.getObjects():
+        """
+        This code appears to be unnecessary for now, but I'm new to PIL and
+        Tkinter so I'm leaving it in as a reference to myself for later use
+
         simulation.getRoom().create_image(obj.getX(),
                                           obj.getY(),
-                                          anchor = NW,
-                                          image = obj.getImage())
-    playVideo(simulation)
+                                          anchor=Tkinter.NE,
+                                          image=obj.getImage())
+        """
+        obj.setLabel(Tkinter.Label(simulation.getRoot(),
+                                          image=obj.getImage()))
+        obj.getLabel().place(x=obj.getX(),
+                            y=obj.getY(),
+                            width=obj.getWidth(),
+                            height=obj.getHeight())
 
+    playVideo(simulation)
 main()
