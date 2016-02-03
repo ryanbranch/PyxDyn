@@ -292,10 +292,29 @@ def fileInput(sim):
             data.close()
             return rowNum
 
+def motionHandler(event, sim):
+    if (event.keysym == 'Up'):
+        for obj in sim.getObjects():
+            obj.getLabel().place(x=obj.getX() + 10,
+                                y=obj.getY() + 10,
+                                width=obj.getWidth(),
+                                height=obj.getHeight())
+
 def playVideo(sim):
+
+    def handler(event, sim=sim):
+        return motionHandler(event, sim)
+
+    sim.getRoom().focus_set()
+    print("Set the focus")
+    sim.getRoot().bind("<Key>", handler)
+    print("Bound the key")
 
     sim.getRoot().mainloop()
     print"Video would be played here."
+
+def key(event=None):
+    print("pressed", repr(event.char))
 
 def main():
     simulation = Room()
@@ -333,6 +352,7 @@ def main():
                             y=obj.getY(),
                             width=obj.getWidth(),
                             height=obj.getHeight())
+
 
     playVideo(simulation)
 main()
