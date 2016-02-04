@@ -23,7 +23,7 @@ class Room:
     # folderName - the name of the folder in which to store data such as images
     # objects - a list containing all of the objects
     # root - Tk root widget for the program
-    # room - the root's canvas, on which visuals are displayed
+    # canvas - the root's canvas, on which visuals are displayed
     # labels - a list of Tkinter Label objects stored here so that the
     #          references are saved and the images can be displayed
     #          NOTE: This is not currently in use.
@@ -53,6 +53,28 @@ class Room:
     def getLabel(self, index):
         return self.labels[index]
     """
+
+    #Function to "wrap-around" any objects outside of the width-height range
+    #Should be called after moving any objects.
+    #NOTE: In the future, if ever dealing with particles that don't move, I
+    #      should write this as a member function for objects, and call it
+    #      with roomWidth and roomHeight as input values
+    #      This would be more efficient as long as not everything is moving
+    #      Honestly should rewrite this very soon whenever I get the chance
+    #NOTE: When dealing with any networks/lines connecting 2 objects, this
+    #      could become an issue. Be careful.
+    def wrapAround(self):
+        for obj in self.objects:
+            x = obj.getX()
+            y = obj.getY()
+            w = self.roomWidth
+            h = self.roomHeight
+            if ((x > w) or (x < 0)):
+                print("wrapping x")
+                obj.setX(x % w)
+            if ((y > h) or (y < 0)):
+                print("wrapping y")
+                obj.setY(y % w)
 
     #Set function for backgroundColor
     def setBackgroundColor(self, colorIn):
@@ -102,13 +124,13 @@ class Room:
     def getFolderName(self):
         return self.folderName
 
-    #Set function for room
-    def setRoom(self, roomIn):
-        self.room = roomIn
+    #Set function for canvas
+    def setCanvas(self, canvasIn):
+        self.canvas = canvasIn
 
-    #Get function for room
-    def getRoom(self):
-        return self.room
+    #Get function for canvas
+    def getCanvas(self):
+        return self.canvas
 
     #Function to add an object to the end of "objects"
     def addObject(self, objectIn):
@@ -159,6 +181,8 @@ class Object:
         # height - the height of the object, in pixels
         # pos - the coordinates of the top-left point of the object, referenced
         #       from the top left of the room
+        #       NOTE: If either x or y go outside of the width or height range,
+        #             they should "wrap around"
         # appearance - a list of (width * height) elements, describing the
         #              color of each pixel in the object.  Used mainly to build
         #              the image, but also if the image is edited down the line
@@ -172,7 +196,7 @@ class Object:
     def __init__(self):
         self.width = 0
         self.height = 0
-        self.pos = 0.0
+        self.pos = [0, 0]
         self.appearance = []
         self.isVisible = True
         self.identifier = 0
@@ -215,13 +239,26 @@ class Object:
     def getPos(self):
         return self.pos
 
+    #Set function for pos
+    def setPos(self, posIn):
+        self.pos[0] = posIn[0]
+        self.pos[1] = posIn[1]
+
     #Get function for x-coordinate of pos
     def getX(self):
         return self.pos[0]
 
+    #Set function for x-coordinate of pos
+    def setX(self, xIn):
+        self.pos[0] = xIn
+
     #Get function for y-coordinate of pos
     def getY(self):
         return self.pos[1]
+
+    #Set function for y-coordinate of pos
+    def setY(self, yIn):
+        self.pos[1] = yIn
 
     #Get function for isVisible
     def getIsVisible(self):
@@ -260,7 +297,7 @@ def fileInput(sim):
             if (pixelsRemaining == -1):
                 objWidth = int(row[0])
                 objHeight = int(row[1])
-                objPos = (int(row[2]), int(row[-1]))
+                objPos = [int(row[2]), int(row[-1])]
                 pixelsRemaining = objWidth * objHeight
             else:
                 if (len(row) == 1):
@@ -295,17 +332,19 @@ def fileInput(sim):
 def motionHandler(event, sim):
     if (event.keysym == 'Up'):
         for obj in sim.getObjects():
-            obj.getLabel().place(x=obj.getX() + 10,
-                                y=obj.getY() + 10,
-                                width=obj.getWidth(),
-                                height=obj.getHeight())
+            obj.setX(obj.getX() + 10)
+            obj.setY(obj.getY() + 5)
+            obj.getLabel().place(x=obj.getX(),
+                                 y=obj.getY(),
+                                 width=obj.getWidth(),
+                                 height=obj.getHeight())
+    sim.wrapAround()
 
 def playVideo(sim):
 
     def handler(event, sim=sim):
         return motionHandler(event, sim)
-
-    sim.getRoom().focus_set()
+    sim.getCanvas().focus_set()
     print("Set the focus")
     sim.getRoot().bind("<Key>", handler)
     print("Bound the key")
@@ -333,15 +372,15 @@ def main():
 
     simulation.buildImages()
     simulation.getRoot().wm_title(simulation.getFileName())
-    simulation.setRoom(Tkinter.Canvas(simulation.getRoot(),
-                                      width=simulation.getRoomWidth(),
-                                      height=simulation.getRoomHeight()))
+    simulation.setCanvas(Tkinter.Canvas(simulation.getRoot(),
+                                        width=simulation.getRoomWidth(),
+                                        height=simulation.getRoomHeight()))
     for obj in simulation.getObjects():
         """
         This code appears to be unnecessary for now, but I'm new to PIL and
         Tkinter so I'm leaving it in as a reference to myself for later use
 
-        simulation.getRoom().create_image(obj.getX(),
+        simulation.getCanvas().create_image(obj.getX(),
                                           obj.getY(),
                                           anchor=Tkinter.NE,
                                           image=obj.getImage())
