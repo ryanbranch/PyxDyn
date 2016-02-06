@@ -7,6 +7,7 @@ import os
 import errno
 import sys
 import Tkinter
+import itertools
 #from Tkinter import *
 
 #Some global constants are defined here
@@ -27,6 +28,10 @@ class Room:
     # labels - a list of Tkinter Label objects stored here so that the
     #          references are saved and the images can be displayed
     #          NOTE: This is not currently in use.
+    # rowNum - an integer storing the "current" row number
+    # rowLen - an integer storing the number of chars in the "current" row
+    # charNum - an integer storing the "current" character number
+    # numRows - the total number of rows in the input file
 
     #Default constructor
     def __init__(self):
@@ -38,8 +43,10 @@ class Room:
         self.folderName = "input_csv"
         self.objects = []
         self.root = Tkinter.Tk()
-        self.root.resizable(0,0)
+        self.root.resizable(width=False, height=False)
         #self.labels = [] NOTE: This is not currently in use.
+        self.rowNum = 0
+        self.charNum = 0
 
     """
     #Wrote this first but I'm thinking of just keeping the labels as a member
@@ -70,11 +77,51 @@ class Room:
             w = self.roomWidth
             h = self.roomHeight
             if ((x > w) or (x < 0)):
-                print("wrapping x")
                 obj.setX(x % w)
             if ((y > h) or (y < 0)):
-                print("wrapping y")
                 obj.setY(y % w)
+
+    #Set function for rowNum
+    def setRowNum(self, numIn):
+        self.rowNum = numIn
+        #print("Row num set to: " + str(self.rowNum))
+
+    #Get function for rowNum
+    def getRowNum(self):
+        return self.rowNum
+
+    #Set function for rowLen
+    def setRowLen(self, lenIn):
+        self.rowLen = lenIn
+        #print("Row len set to: " + str(self.rowLen))
+
+    #Get function for rowLen
+    def getRowLen(self):
+        return self.rowLen
+
+    #Set function for charNum
+    def setCharNum(self, numIn):
+        self.charNum = numIn
+        #print("Char num set to: " + str(self.charNum))
+
+    #Get function for charNum
+    def getCharNum(self):
+        return self.charNum
+
+    #Set function for numRows
+    def setNumRows(self, numIn):
+        self.numRows = numIn
+        #print("num rows set to: " + str(self.numRows))
+
+    #Get function for numRows
+    def getNumRows(self):
+        return self.numRows
+
+    #Updates charNum based on input row
+    def updateCharNum(self, rowIn):
+        for row in rowIn:
+            self.charNum += len(row)
+
 
     #Set function for backgroundColor
     def setBackgroundColor(self, colorIn):
@@ -183,6 +230,7 @@ class Object:
         #       from the top left of the room
         #       NOTE: If either x or y go outside of the width or height range,
         #             they should "wrap around"
+        # newPos - the coordinates of the next position of the object
         # appearance - a list of (width * height) elements, describing the
         #              color of each pixel in the object.  Used mainly to build
         #              the image, but also if the image is edited down the line
@@ -197,6 +245,7 @@ class Object:
         self.width = 0
         self.height = 0
         self.pos = [0, 0]
+        self.newPos = self.pos
         self.appearance = []
         self.isVisible = True
         self.identifier = 0
@@ -207,6 +256,7 @@ class Object:
         self.width = width
         self.height = height
         self.pos = pos
+        self.newPos = pos
         self.appearance = appearance
         self.isVisible = True
         self.identifier = id
@@ -244,6 +294,15 @@ class Object:
         self.pos[0] = posIn[0]
         self.pos[1] = posIn[1]
 
+    #Get function for newPos
+    def getNewPos(self):
+        return self.newPos
+
+    #Set function for newPos
+    def setNewPos(self, posIn):
+        self.newPos[0] = posIn[0]
+        self.newPos[1] = posIn[1]
+
     #Get function for x-coordinate of pos
     def getX(self):
         return self.pos[0]
@@ -259,6 +318,22 @@ class Object:
     #Set function for y-coordinate of pos
     def setY(self, yIn):
         self.pos[1] = yIn
+
+    #Get function for x-coordinate of newPos
+    def getNewX(self):
+        return self.newPos[0]
+
+    #Set function for x-coordinate of newPos
+    def setNewX(self, xIn):
+        self.newPos[0] = xIn
+
+    #Get function for y-coordinate of newPos
+    def getNewY(self):
+        return self.newPos[1]
+
+    #Set function for y-coordinate of newPos
+    def setNewY(self, yIn):
+        self.newPos[1] = yIn
 
     #Get function for isVisible
     def getIsVisible(self):
@@ -276,7 +351,6 @@ def fileInput(sim):
     sim.makeFolder()
     data = open(sim.getFileName(), 'rb')
     reader = csv.reader(data)
-    rowNum = 0
     numObjects = 0
     objectIn = 0
     objHeight = 0
@@ -284,14 +358,16 @@ def fileInput(sim):
     pixels = []
     pixelsRemaining = -1
     readyToPlay = False
+    #sim.setNumRows(len(list(reader)))
 
     for row in reader: #Defines the current row
         #Gets header data
-        if (rowNum == 0):
+        if (sim.getRowNum() == 0):
             sim.setRoomWidth(int(row[0]))
             sim.setRoomHeight(int(row[1]))
             numObjects = int(row[2]) #Crash if this isn't 1 or more
-            rowNum += 1
+            sim.setRowNum(sim.getRowNum() + 1)
+            sim.updateCharNum(row)
         #Reads in objects
         elif (objectIn < numObjects):
             if (pixelsRemaining == -1):
@@ -319,7 +395,8 @@ def fileInput(sim):
                                   (objectIn + 1)))
                     objectIn += 1
                     del pixels[:]
-            rowNum += 1
+            sim.setRowNum(sim.getRowNum() + 1)
+            sim.updateCharNum(row)
 
         #All objects are now read in
         else:
@@ -327,28 +404,38 @@ def fileInput(sim):
 
         if (readyToPlay):
             data.close()
-            return rowNum
+            return
 
 def motionHandler(event, sim):
+    data = open(sim.getFileName(), 'rb')
+    reader = csv.reader(data)
+    try:
+        row = (itertools.islice(reader, (sim.getRowNum()), None)).next()
+    except StopIteration:
+        print("Reached end of file.")
+    for i in range((len(row) / 2)):
+        sim.objects[i].setNewPos([int(row[i]), int(row[i + 1])])
+        #sim.objects[]
     if (event.keysym == 'Up'):
         for obj in sim.getObjects():
-            obj.setX(obj.getX() + 10)
-            obj.setY(obj.getY() + 5)
+            obj.setX(obj.getNewX())
+            obj.setY(obj.getNewY())
             obj.getLabel().place(x=obj.getX(),
                                  y=obj.getY(),
                                  width=obj.getWidth(),
                                  height=obj.getHeight())
+    sim.setRowNum(sim.getRowNum() + 1)
     sim.wrapAround()
+    data.close()
 
 def playVideo(sim):
-
     def handler(event, sim=sim):
-        return motionHandler(event, sim)
+            return motionHandler(event, sim)
     sim.getCanvas().focus_set()
     print("Set the focus")
     sim.getRoot().bind("<Key>", handler)
     print("Bound the key")
-
+    #sim.getCanvas().pack(expand=1) NOTE: this line useless?
     sim.getRoot().mainloop()
     print"Video would be played here."
 
@@ -375,6 +462,10 @@ def main():
     simulation.setCanvas(Tkinter.Canvas(simulation.getRoot(),
                                         width=simulation.getRoomWidth(),
                                         height=simulation.getRoomHeight()))
+    simulation.getRoot().geometry(str(simulation.getRoomWidth()) +
+                                  "x" +
+                                  str(simulation.getRoomHeight()))
+
     for obj in simulation.getObjects():
         """
         This code appears to be unnecessary for now, but I'm new to PIL and
