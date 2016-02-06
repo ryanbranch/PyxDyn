@@ -483,6 +483,5 @@ def main():
                             width=obj.getWidth(),
                             height=obj.getHeight())
 
-
     playVideo(simulation)
 main()
