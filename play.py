@@ -413,6 +413,7 @@ def motionHandler(event, sim):
         row = (itertools.islice(reader, (sim.getRowNum()), None)).next()
     except StopIteration:
         print("Reached end of file.")
+        row = [0] #Special case when file contains no animation data
     for i in range((len(row) / 2)):
         sim.objects[i].setNewPos([int(row[i]), int(row[i + 1])])
         #sim.objects[]

@@ -50,6 +50,8 @@ class Object {
         //Constructor for object with position, width, height, and color
         //specified
         Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_);
+        //Destructor
+        ~Object();
         //Get function for ptrColor
         Color* getPtrColor();
         //Set function for ptrColor
@@ -59,7 +61,7 @@ class Object {
         //Returns the element of dataPtr at the specified index
         int getElt(int index);
         //Function to build the data array
-        void buildData();     
+        void buildData();
     private:
         int xPos;
         int yPos;

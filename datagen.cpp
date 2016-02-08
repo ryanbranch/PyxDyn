@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdlib>
 #include <fstream>
+#include <sstream>
 #include "datagen.h"
 #include "helpers.cpp"
 
@@ -25,39 +26,46 @@ Color::Color(int color) : red(color), green(color), blue(color) {}
 
 //Constructor for a color based on the color's name
 Color::Color(string name) {
-    if (lowercase(name) == "black") {
-        red = 0;
-        green = 0;
-        blue = 0;
+    try {
+        if (lowercase(name) == "black") {
+            red = 0;
+            green = 0;
+            blue = 0;
+        }
+        else if (lowercase(name) == "white") {
+            red = 255;
+            green = 255;
+            blue = 255;
+        }
+        else if (lowercase(name) == "red") {
+            red = 255;
+            green = 0;
+            blue = 0;
+        }
+        else if (lowercase(name) == "green") {
+            red = 0;
+            green = 255;
+            blue = 0;
+        }
+        else if (lowercase(name) == "blue") {
+            red = 0;
+            green = 0;
+            blue = 255;
+        }
+        else if ((lowercase(name) == "grey") ||
+                 (lowercase(name) == "gray")) {
+            red = 128;
+            green = 128;
+            blue = 128;
+        }
+        else {
+            string e = "Color input was ";
+            e += name;
+            throw e;
+        }
     }
-    else if (lowercase(name) == "white") {
-        red = 255;
-        green = 255;
-        blue = 255;
-    }
-    else if (lowercase(name) == "red") {
-        red = 255;
-        green = 0;
-        blue = 0;
-    }
-    else if (lowercase(name) == "green") {
-        red = 0;
-        green = 255;
-        blue = 0;
-    }
-    else if (lowercase(name) == "blue") {
-        red = 0;
-        green = 0;
-        blue = 255;
-    }
-    else if ((lowercase(name) == "grey") ||
-             (lowercase(name) == "gray")) {
-        red = 128;
-        green = 128;
-        blue = 128;
-    }
-    else {
-        cout << "Color input was " << name << endl;
+    catch (string exception) {
+        cout << exception << endl;
         exit(1);
     }
 }
@@ -183,6 +191,12 @@ Object::Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_) 
                ptrData(new int[(3 * width_ * height_) + 4]),
                dataFull(false) {}
 
+//Destructor
+Object::~Object(){
+    delete ptrColor;
+    delete[] ptrData;
+}
+
 //Get function for ptrColor
 Color* Object::getPtrColor() {
     return ptrColor;
@@ -241,47 +255,280 @@ void Object::buildData() {
 }
 
 int main(int argc, char* argv[]) {
-    string filename;
-    if (argc == 2) {
-        filename = argv[1];
-        cout << filename << endl;
+    string outFilename;
+    string inFilename;
+    if (argc == 3) {
+        inFilename = argv[1];
+        outFilename = argv[2];
     }
     else {
-        filename = "input.csv";
+        inFilename = "datagen.csv";
+        outFilename = "input.csv";
     }
-    int xRes = 400;
-    int yRes = 300;
-    int numObjects = 1;
+    ifstream inputFile(inFilename.c_str());
+    string comma;
+    int xRes;
+    int yRes;
+    int numObjects;
+    string row;
+    string col;
+    
+    //File input for x and y dimensions of window as well as number of objects
+    try {
+        //Ensures row is present
+        if (!(inputFile >> row)) {
+            string e = "Row appears to be missing: 0";
+            throw e;
+        }
+        else {
+            istringstream ss(row);
+            //Checks xRes
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: xRes (0, 0)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> xRes)) {
+                    string e = "xRes value not properly formatted: (0, 0)";
+                    throw e;
+                }
+            }
+            //Checks yRes
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: yRes (0, 1)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> yRes)) {
+                    string e = "yRes value not properly formatted: (0, 1)";
+                    throw e;
+                }
+            }
+            //Checks numObjects
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: numObjects (0, 2)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> numObjects)) {
+                    string e = "numObjects value not properly formatted: (0, 2)";
+                    throw e;
+                }
+            }
+        }
+    }
+    catch (string exception) {
+        cout << exception << endl;
+        exit(1);
+    }
+    cout << "xRes: " << xRes << endl;
+    cout << "yRes: " << yRes << endl;
+    cout << "numObjects: " << numObjects << endl;
+    cout << "================================" << endl;
+    
+    //File input for widths, heights, colors, and positions of objects
     Object* objects[numObjects];
-    Color* testColor = new Color(101,183,151);
-    Object* testObj = new Object(203, 111, testColor, 43, 30);
-    testObj->buildData();
-    cout << "built data array for testObj" << endl;
-    objects[0] = testObj;
-    ofstream csv(filename.c_str());
-    if (csv.is_open()) {
-        csv << xRes << "," << yRes << "," << numObjects << endl;
-        for (int i = 0; i < numObjects; ++i) {
-            csv << objects[i]->getElt(0) << ",";
-            csv << objects[i]->getElt(1) << ",";
-            csv << objects[i]->getElt(2) << ",";
-            csv << objects[i]->getElt(3) << endl;
-            for (int j = 4; j < objects[i]->getNumElts(); j += 3) {
-                for (int k = 0; k < 3; ++k) {
-                    csv << objects[i]->getElt(j + k);
-                    if (k != 2) {
-                        csv << ",";
+    Color* colors[numObjects];
+    for (int i = 0; i < numObjects; ++i) {
+        int width;
+        int height;
+        int r;
+        int g;
+        int b;
+        int x;
+        int y;
+        try {
+            //Ensures row is present
+            if (!(inputFile >> row)) {
+                string e = "Row appears to be missing: ";
+                e += i;
+                throw e;
+            }
+            else {
+                istringstream ss(row);              
+                //Checks x
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: x (";
+                    e += i;
+                    e += ", 0)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> x)) {
+                        cout << col << endl;
+                        string e = "x value not properly formatted: (";
+                        e += i;
+                        e += ", 0)";
+                        throw e;
                     }
-                    else {
-                        csv << endl;
+                }
+                //Checks y
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: y (";
+                    e += i;
+                    e += ", 1)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> y)) {
+                        cout << col << endl;
+                        string e = "y value not properly formatted: (";
+                        e += i;
+                        e += ", 1)";
+                        throw e;
+                    }
+                }
+                //Checks r
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: r (";
+                    e += i;
+                    e += ", 2)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> r)) {
+                        cout << col << endl;
+                        string e = "r value not properly formatted: (";
+                        e += i;
+                        e += ", 2)";
+                        throw e;
+                    }
+                }                
+                //Checks g
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: g (";
+                    e += i;
+                    e += ", 3)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> g)) {
+                        cout << col << endl;
+                        string e = "g value not properly formatted: (";
+                        e += i;
+                        e += ", 3)";
+                        throw e;
+                    }
+                }
+                //Checks b
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: b (";
+                    e += i;
+                    e += ", 4)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> b)) {
+                        cout << col << endl;
+                        string e = "b value not properly formatted: (";
+                        e += i;
+                        e += ", 4)";
+                        throw e;
+                    }
+                }
+                //Checks width
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: width (";
+                    e += i;
+                    e += ", 5)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> width)) {
+                        cout << col << endl;
+                        string e = "width value not properly formatted: (";
+                        e += i;
+                        e += ", 5)";
+                        throw e;
+                    }
+                }
+                //Checks height
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: height (";
+                    e += i;
+                    e += ", 6)";
+                    throw e;
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> height)) {
+                        cout << col << endl;
+                        string e = "height value not properly formatted: (";
+                        e += i;
+                        e += ", 6)";
+                        throw e;
+                    }
+                }  
+            }
+        }
+        catch (string exception) {
+            cout << exception << endl;
+            exit(1);
+        }
+        colors[i] = new Color(r, g, b);
+        objects[i] = new Object(x, y, colors[i], width, height);
+        objects[i]->buildData();
+        cout << "OBJECT: " << i << endl;
+        cout << "witdh: " << width << endl;
+        cout << "height: " << height << endl;
+        cout << "r: " << r << endl;
+        cout << "g: " << g << endl;
+        cout << "b: " << b << endl;
+        cout << "x: " << x << endl;
+        cout << "y: " << y << endl;
+        cout << "================================" << endl;
+    }
+    inputFile.close();
+    
+    //File output for objects
+    ofstream outputFile(outFilename.c_str());
+    try {
+        if (outputFile.is_open()) {
+            outputFile << xRes << "," << yRes << "," << numObjects << endl;
+            for (int i = 0; i < numObjects; ++i) {
+                outputFile << objects[i]->getElt(0) << ",";
+                outputFile << objects[i]->getElt(1) << ",";
+                outputFile << objects[i]->getElt(2) << ",";
+                outputFile << objects[i]->getElt(3) << endl;
+                for (int j = 4; j < objects[i]->getNumElts(); j += 3) {
+                    for (int k = 0; k < 3; ++k) {
+                        outputFile << objects[i]->getElt(j + k);
+                        if (k != 2) {
+                            outputFile << ",";
+                        }
+                        else {
+                            outputFile << endl;
+                        }
                     }
                 }
             }
         }
-        csv.close();
+        else {
+            string e = "Unable to open output file: ";
+            e += outFilename;
+            throw e;
+        }
+        outputFile.close();
     }
-    else {
-        cout << "Could not open file." << endl;
+    catch (string exception) {
+        cout << exception << endl;
+        exit(1);
     }
+    
+    //Run destructor for any colors or objects
+    for (int i = 0; i < numObjects; ++i) {
+        delete colors[i];
+        delete objects[i];
+    }
+    
     return 0;  
 }
