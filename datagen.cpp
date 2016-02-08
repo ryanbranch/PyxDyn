@@ -9,6 +9,63 @@
 
 using namespace std;
 
+//CLASS: Simulation
+//Default constructor for Simulation
+Simulation::Simulation() {
+    
+}
+//Constructor for Simulation with inputs
+Simulation::Simulation(int xRes_,
+                       int yRes_,
+                       int numObjects_, 
+                       Color** colors_,
+                       Object** objects_) :
+                       xRes(xRes_),
+                       yRes(yRes_),
+                       numObjects(numObjects_),
+                       colors(new Color*[numObjects_]),
+                       objects(new Object*[numObjects_]) {
+    for (int i = 0; i < numObjects_; ++i) {
+        colors[i] = colors_[i];
+        objects[i] = objects_[i];
+    }
+}
+
+//Destructor for Simulation
+Simulation::~Simulation() {
+    //cout << "Simulation dtor" << endl;
+    //Run destructor for any colors or objects
+    for (int i = 0; i < numObjects; ++i) {
+        delete colors[i];
+        delete objects[i];
+    }
+}
+
+//Get function for xRes
+int Simulation::getXRes() {
+    return xRes;
+}
+
+//Get function for yRes
+int Simulation::getYRes() {
+    return yRes;
+}
+
+//Get function for numObjects
+int Simulation::getNumObjects() {
+    return numObjects;
+}
+
+//Returns pointer to Color at index i of colors
+Color* Simulation::getColor(int i) {
+    return colors[i];
+}
+
+//Returns pointer to Object at index i of objects
+Object* Simulation::getObject(int i) {
+    return objects[i];
+}
+
 //CLASS: Color
 //Default constructor for Color
 Color::Color() {
@@ -191,10 +248,35 @@ Object::Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_) 
                ptrData(new int[(3 * width_ * height_) + 4]),
                dataFull(false) {}
 
-//Destructor
+//Destructor for Object
 Object::~Object(){
-    delete ptrColor;
-    delete[] ptrData;
+    //cout << "Object dtor" << endl;
+    //delete ptrColor;
+    //delete[] ptrData;
+}
+
+//Assignment operator for Object
+Object& Object::operator= (const Object &rhs) {
+    //Check for self assignment
+    if (this == &rhs) {
+        return *this;
+    }
+    //Otherwise, edit the member variables, then return the Color
+    /*
+    red = rhs.red;
+    green = rhs.green;
+    blue = rhs.blue;
+    */
+    return *this;
+}
+
+//Copy constructor for Object
+Object::Object(const Object &other) {
+    /*
+    red = other.red;
+    green = other.green;
+    blue = other.blue;
+    */
 }
 
 //Get function for ptrColor
@@ -248,25 +330,13 @@ void Object::buildData() {
             ptrData[(3 * ((h * width) + w)) + 4] = r;
             ptrData[(3 * ((h * width) + w)) + 5] = g;
             ptrData[(3 * ((h * width) + w)) + 6] = b;
-            //cout << "iteration" << endl;
         }
     }
     dataFull = true;
 }
 
-int main(int argc, char* argv[]) {
-    string outFilename;
-    string inFilename;
-    if (argc == 3) {
-        inFilename = argv[1];
-        outFilename = argv[2];
-    }
-    else {
-        inFilename = "datagen.csv";
-        outFilename = "input.csv";
-    }
-    ifstream inputFile(inFilename.c_str());
-    string comma;
+Simulation* inCsv(string filename) {
+    ifstream inputFile(filename.c_str());
     int xRes;
     int yRes;
     int numObjects;
@@ -329,9 +399,9 @@ int main(int argc, char* argv[]) {
     cout << "numObjects: " << numObjects << endl;
     cout << "================================" << endl;
     
+    Color* tempColors[numObjects];
+    Object* tempObjects[numObjects];
     //File input for widths, heights, colors, and positions of objects
-    Object* objects[numObjects];
-    Color* colors[numObjects];
     for (int i = 0; i < numObjects; ++i) {
         int width;
         int height;
@@ -474,9 +544,10 @@ int main(int argc, char* argv[]) {
             cout << exception << endl;
             exit(1);
         }
-        colors[i] = new Color(r, g, b);
-        objects[i] = new Object(x, y, colors[i], width, height);
-        objects[i]->buildData();
+        tempColors[i] = new Color(r, g, b);
+        tempObjects[i] = new Object(x, y, tempColors[i], width, height);
+        tempObjects[i]->buildData();
+        cout << "Built data for object " << i << endl;
         cout << "OBJECT: " << i << endl;
         cout << "witdh: " << width << endl;
         cout << "height: " << height << endl;
@@ -488,20 +559,32 @@ int main(int argc, char* argv[]) {
         cout << "================================" << endl;
     }
     inputFile.close();
-    
+    Simulation* simulation = new Simulation(xRes,
+                                            yRes,
+                                            numObjects,
+                                            tempColors,
+                                            tempObjects);
+    return simulation;
+}
+
+void outCsv(string filename, Simulation* theSim) {
     //File output for objects
-    ofstream outputFile(outFilename.c_str());
+    ofstream outputFile(filename.c_str());
     try {
         if (outputFile.is_open()) {
-            outputFile << xRes << "," << yRes << "," << numObjects << endl;
-            for (int i = 0; i < numObjects; ++i) {
-                outputFile << objects[i]->getElt(0) << ",";
-                outputFile << objects[i]->getElt(1) << ",";
-                outputFile << objects[i]->getElt(2) << ",";
-                outputFile << objects[i]->getElt(3) << endl;
-                for (int j = 4; j < objects[i]->getNumElts(); j += 3) {
+            outputFile << theSim->getXRes() << ",";
+            outputFile << theSim->getYRes() << ",";
+            outputFile << theSim->getNumObjects() << endl;
+            for (int i = 0; i < theSim->getNumObjects(); ++i) {
+                outputFile << theSim->getObject(i)->getElt(0) << ",";
+                outputFile << theSim->getObject(i)->getElt(1) << ",";
+                outputFile << theSim->getObject(i)->getElt(2) << ",";
+                outputFile << theSim->getObject(i)->getElt(3) << endl;
+                for (int j = 4;
+                     j < theSim->getObject(i)->getNumElts();
+                     j += 3) {
                     for (int k = 0; k < 3; ++k) {
-                        outputFile << objects[i]->getElt(j + k);
+                        outputFile << theSim->getObject(i)->getElt(j + k);
                         if (k != 2) {
                             outputFile << ",";
                         }
@@ -514,7 +597,7 @@ int main(int argc, char* argv[]) {
         }
         else {
             string e = "Unable to open output file: ";
-            e += outFilename;
+            e += filename;
             throw e;
         }
         outputFile.close();
@@ -523,12 +606,23 @@ int main(int argc, char* argv[]) {
         cout << exception << endl;
         exit(1);
     }
-    
-    //Run destructor for any colors or objects
-    for (int i = 0; i < numObjects; ++i) {
-        delete colors[i];
-        delete objects[i];
+}
+
+int main(int argc, char* argv[]) {
+    string outFilename;
+    string inFilename;
+    if (argc == 3) {
+        inFilename = argv[1];
+        outFilename = argv[2];
     }
-    
+    else {
+        inFilename = "datagen.csv";
+        outFilename = "input.csv";
+    }
+    //Gets input data and stores it as a pointer to simulation
+    Simulation* sim = inCsv(inFilename);
+    outCsv(outFilename, sim);
+    //Deletes the simulation
+    delete sim;
     return 0;  
 }

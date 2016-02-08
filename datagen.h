@@ -50,8 +50,12 @@ class Object {
         //Constructor for object with position, width, height, and color
         //specified
         Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_);
-        //Destructor
+        //Destructor for Object
         ~Object();
+        //Assignment operator for Object
+        Object& operator= (const Object &rhs);
+        //Copy constructor for Object
+        Object(const Object &other);
         //Get function for ptrColor
         Color* getPtrColor();
         //Set function for ptrColor
@@ -70,4 +74,34 @@ class Object {
         int height;
         int* ptrData;
         bool dataFull;
+};
+
+class Simulation {
+    public:
+        //Default constructor for Simulation
+        Simulation();
+        //Constructor for Simulation with inputs
+        Simulation(int xRes_,
+                   int yRes_,
+                   int numObjects_, 
+                   Color** colors_,
+                   Object** objects_);
+        //Destructor for Simulation
+        ~Simulation();
+        //Get function for xRes
+        int getXRes();
+        //Get function for yRes
+        int getYRes();
+        //Get function for numObjects
+        int getNumObjects();
+        //Get function for colors
+        Color* getColor(int i);
+        //Get function for objects
+        Object* getObject(int i);
+    private:
+        int xRes;
+        int yRes;
+        int numObjects;
+        Color** colors;
+        Object** objects;
 };
