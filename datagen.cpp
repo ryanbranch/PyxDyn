@@ -321,10 +321,10 @@ void Object::buildData() {
     int r = ptrColor->getRed();
     int g = ptrColor->getGreen();
     int b = ptrColor->getBlue();
-    ptrData[0] = width;
-    ptrData[1] = height;
-    ptrData[2] = xPos;
-    ptrData[3] = yPos;
+    ptrData[0] = xPos;
+    ptrData[1] = yPos;
+    ptrData[2] = width;
+    ptrData[3] = height;
     for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
             ptrData[(3 * ((h * width) + w)) + 4] = r;

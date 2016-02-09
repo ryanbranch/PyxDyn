@@ -371,9 +371,9 @@ def fileInput(sim):
         #Reads in objects
         elif (objectIn < numObjects):
             if (pixelsRemaining == -1):
-                objWidth = int(row[0])
-                objHeight = int(row[1])
-                objPos = [int(row[2]), int(row[-1])]
+                objPos = [int(row[0]), int(row[1])]
+                objWidth = int(row[2])
+                objHeight = int(row[-1])
                 pixelsRemaining = objWidth * objHeight
             else:
                 if (len(row) == 1):
