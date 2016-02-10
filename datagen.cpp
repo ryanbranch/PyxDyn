@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
+#include <cmath>
 #include "datagen.h"
 #include "helpers.cpp"
 
@@ -41,6 +42,43 @@ Simulation::~Simulation() {
     }
 }
 
+//Function to define the constants used in calculation (Default values)
+void Simulation::setConstants() {
+    //Constants useful for calculations
+    //G - Gravitational constant in (N * m^2)/(kg)
+    c_G = 667408000000;
+    //Size to use for the width or height of a pixel, in meters
+    //NOTE: This is huge, 1 million meters per pixel.  Keep that in mind.
+    pixelSize = 1000000;
+    //Density, in (kg)/(m^3)
+    //NOTE: Based on my calculations, this will vary extremely with the scale of
+    //      the objects being displayed.  So for a planet sized object it should
+    //      be maybe something around 1*10^6.  Not sure about other scales.
+    density = 1000;
+    //Time interval between calculations, in seconds (1x10^9)
+    //NOTE: 1 billion seconds = 31.68878 years.
+    timeInterval = 1000000000;
+}
+//Function to define the constants used in calculation (Input values)
+//See default setConstants() for more information about values
+void Simulation::setConstants(double c_G_,
+                              double pixelSize_,
+                              double density_,
+                              double timeInterval_) {
+    if (c_G_ != 0) {
+        c_G = c_G_;
+    }
+    if (pixelSize_ != 0) {
+        pixelSize = pixelSize_;
+    }
+    if (density_ != 0) {
+        density = density_;
+    }
+    if (timeInterval != 0) {
+        timeInterval = timeInterval_;
+    }
+}
+
 //Get function for xRes
 int Simulation::getXRes() {
     return xRes;
@@ -64,6 +102,120 @@ Color* Simulation::getColor(int i) {
 //Returns pointer to Object at index i of objects
 Object* Simulation::getObject(int i) {
     return objects[i];
+}
+
+//FUNCTIONS USED IN CALCULATION
+
+//Initializes the xi and yi positions of all objects
+void Simulation::iPosInit() {
+    for (int i = 0; i < numObjects; ++i){
+        Object* obj = objects[i];
+        obj->xiSet(double(obj->xPosGet()) * pixelSize);
+        obj->yiSet(double(obj->yPosGet()) * pixelSize);
+    }
+}
+
+//Returns the x-coordinate distance between two objects measured from the center
+//A positive value implies that obj2 is to the right of obj1
+//A negative value implies that obj2 is to the left of obj1
+double Simulation::xDistBetween(Object* obj1, Object* obj2) {
+    return (obj2->xcGet() - obj1->xcGet());
+}
+//Returns the y-coordinate distance between two objects measured from the center
+//A positive value implies that obj2 is below obj1
+//A negative value implies that obj2 is above obj1
+double Simulation::yDistBetween(Object* obj1, Object* obj2) {
+    return (obj2->ycGet() - obj1->ycGet());
+}
+//Returns the distance between two objects, measured from the center
+double Simulation::distBetween(Object* obj1, Object* obj2) {
+    return sqrt(pow(xDistBetween(obj1, obj2), 2) +
+                pow(yDistBetween(obj1, obj2), 2));
+}
+//Returns the fractional x component of any force acting between two objects
+//A positive value implies that obj2 is to the right of obj1
+//A negative value implies that obj2 is to the left of obj1
+double Simulation::xComponent(Object* obj1, Object* obj2) {
+    return ((xDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
+}
+//Returns the fractional y component of any force acting between two objects
+//A positive value implies that obj2 is below obj1
+//A negative value implies that obj2 is above obj1
+double Simulation::yComponent(Object* obj1, Object* obj2) {
+    return ((yDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
+}
+//Returns the gravitational force between two objects, from the center
+double Simulation::gForce(Object* obj1, Object* obj2) {
+    return((c_G * obj1->getMass() * obj2->getMass())/
+           (pow(distBetween(obj1, obj2), 2))); 
+}
+//Returns the x component of the gravitational force acting between two objects
+//A positive value implies that obj2 is to the right of obj1
+//A negative value implies that obj2 is to the left of obj1
+double Simulation::gForceX(Object* obj1, Object* obj2) {
+    return (xComponent(obj1, obj2) * gForce(obj1, obj2));
+}
+//Returns the x component of the gravitational force acting between two objects
+//A positive value implies that obj2 is above obj1
+//A negative value implies that obj2 is below obj1
+double Simulation::gForceY(Object* obj1, Object* obj2) {
+    return (yComponent(obj1, obj2) * gForce(obj1, obj2));
+}
+//Returns the acceleration based on force and mass inputs
+double Simulation::accel(double force, double mass) {
+    return (force / mass);
+}
+//Returns the change in velocity on time interval based on acceleration
+double Simulation::deltaVel(double accel) {
+    return accel * timeInterval;
+}
+//Updates the final x velocity of an object based on change in velocity
+double Simulation::updateVelX(double deltaVel, Object* obj) {
+    obj->vxfSet(obj->vxiGet() + deltaVel);
+    return obj->vxfGet();
+}
+//Updates the final y velocity of an object based on change in velocity
+double Simulation::updateVelY(double deltaVel, Object* obj) {
+    obj->vyfSet(obj->vyiGet() + deltaVel);
+    return obj->vyfGet();
+}
+//Returns the change in position on time interval based on acceleration
+double Simulation::deltaPos(double vel) {
+    return vel * timeInterval;
+}
+//Updates the final x position of an object based on change in position
+double Simulation::updatePosX(double deltaPos, Object* obj) {
+    obj->xfSet(obj->xiGet() + deltaPos);
+    return obj->xfGet();
+}
+//Updates the final y position of an object based on change in position
+double Simulation::updatePosY(double deltaPos, Object* obj) {
+    obj->yfSet(obj->yiGet() + deltaPos);
+    return obj->yfGet();
+}
+
+//Calculates and applies the change in position for all objects
+void Simulation::deltaPos() {
+    for (int i = 0; i < numObjects; ++i) {
+        Object* obj = objects[i];
+        //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE START OF CALCULATION
+        //      (Done first because they depend on the INITIAL position, etc.)
+        obj->xcSet();
+        obj->ycSet();
+        
+        //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE END OF CALCULATION
+        //      (Done last because they update INITIAL values for next iter)
+        obj->xiSet(obj->xfGet());
+        obj->yiSet(obj->yfGet());
+        obj->vxiSet(obj->vxfGet());
+        obj->vyiSet(obj->vyfGet());
+    }
+        
+    //NOTE: Things like forces should be calculated between the object and every
+    //      other object but itself.  Do this by iterating through the objects
+    //      array and calculating for all pointers where the object pointer at
+    //      the current index is not equal to obj (because that signifies that
+    //      the object pointer at the current index IS obj
 }
 
 //CLASS: Color
@@ -131,7 +283,6 @@ Color::Color(string name) {
 int Color::getRed() {
     return red;
 }
-
 //Set function for red
 void Color::setRed(int color) {
     red = color;
@@ -141,7 +292,6 @@ void Color::setRed(int color) {
 int Color::getGreen() {
     return green;
 }
-
 //Set function for green
 void Color::setGreen(int color) {
     green = color;
@@ -151,7 +301,6 @@ void Color::setGreen(int color) {
 int Color::getBlue() {
     return blue;
 }
-
 //Set function for blue
 void Color::setBlue(int color) {
     blue = color;
@@ -283,10 +432,26 @@ Object::Object(const Object &other) {
 Color* Object::getPtrColor() {
     return ptrColor;
 }
-
 //Set function for ptrColor
 void Object::setPtrColor(Color* ptrColor_) {
     ptrColor = ptrColor_;
+}
+
+//Function to get the x position on the screen, in pixels
+int Object::xPosGet() {
+    return xPos;
+}
+//Function to set the x position on the screen, in pixels
+void Object::xPosSet(int pos_) {
+    xPos = pos_;
+}
+//Function to get the y position on the screen, in pixels
+int Object::yPosGet() {
+    return yPos;
+}
+//Function to set the y position on the screen, in pixels
+void Object::yPosSet(int pos_) {
+    yPos = pos_;
 }
 
 //Returns the number of elements that the data array does (or will) hold
@@ -335,6 +500,118 @@ void Object::buildData() {
     dataFull = true;
 }
 
+//SET AND GET FUNCTIONS FOR OBJECT PHYSICAL PROPERTIES
+//Get function for mass
+double Object::getMass() {
+    return mass;
+}
+//Set function for mass (calculated based on density and area)
+void Object::setMass() {
+    mass = (double(width * height) * density);
+}
+
+//Get function for density
+double Object::getDensity() {
+    return density;
+}
+//Set function for density
+void Object::setDensity(double density_) {
+    density = density_;
+}
+
+//Get function for xc
+double Object::xcGet() {
+    return xc;
+}
+//Set function for xc (calculated based on width and xi)
+void Object::xcSet() {
+    xc = xi + (double(width) / 2);
+}
+
+//Get function for yc
+double Object::ycGet() {
+    return yc;
+}
+//Set function for yc (calculated based on height and yi)
+void Object::ycSet() {
+    yc = yi + (double(height) / 2);
+}
+
+//Get function for xi
+double Object::xiGet() {
+    return xi;
+}
+//Set function for xi
+void Object::xiSet(double xi_) {
+    xi = xi_;
+}
+
+//Get function for yi
+double Object::yiGet() {
+    return yi;
+}
+//Set function for yi
+void Object::yiSet(double yi_) {
+    yi = yi_;
+}
+
+//Get function for xf
+double Object::xfGet() {
+    return xf;
+}
+//Set function for xf
+void Object::xfSet(double xf_) {
+    xf = xf_;
+}
+
+//Get function for yf
+double Object::yfGet() {
+    return yf;
+}
+//Set function for yf
+void Object::yfSet(double yf_) {
+    yf = yf_;
+}
+
+//Get function for vxi
+double Object::vxiGet() {
+    return vxi;
+}
+//Set function for vxi
+void Object::vxiSet(double vxi_) {
+    vxi = vxi_;
+}
+
+//Get function for vyi
+double Object::vyiGet() {
+    return vyi;
+}
+//Set function for vyi
+void Object::vyiSet(double vyi_) {
+    vyi = vyi_;
+}
+
+//Get function for vxf
+double Object::vxfGet() {
+    return vxf;
+}
+//Set function for vxf
+void Object::vxfSet(double vxf_) {
+    vxf = vxf_;
+}
+
+//Get function for vyf
+double Object::vyfGet() {
+    return vyf;
+}
+//Set function for vyf
+void Object::vyfSet(double vyf_) {
+    vyf = vyf_;
+}
+
+//FUNCTIONS NOT BELONGING TO ANY CLASS
+
+//Function to take in .csv data
 Simulation* inCsv(string filename) {
     ifstream inputFile(filename.c_str());
     int xRes;
@@ -567,6 +844,7 @@ Simulation* inCsv(string filename) {
     return simulation;
 }
 
+//Function to write csv output data
 void outCsv(string filename, Simulation* theSim) {
     //File output for objects
     ofstream outputFile(filename.c_str());
@@ -621,6 +899,7 @@ int main(int argc, char* argv[]) {
     }
     //Gets input data and stores it as a pointer to simulation
     Simulation* sim = inCsv(inFilename);
+    sim->setConstants();
     outCsv(outFilename, sim);
     //Deletes the simulation
     delete sim;
