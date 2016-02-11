@@ -57,6 +57,12 @@ class Object {
         //Copy constructor for Object
         Object(const Object &other);
         
+        //FUNCTIONS USED IN CALCULATION
+        //Function to define the constants used in calculation (Default values)
+        void setConstants();
+        //Function to define the constants used in calculation (Input values)
+        void setConstants(double density_);
+        
         //SET AND GET FUNCTIONS FOR DISPLAY PROPERTIES
         //Get function for ptrColor
         Color* getPtrColor();
@@ -154,7 +160,6 @@ class Object {
         double vyi;
         double vxf;
         double vyf;
-        
 };
 
 class Simulation {
@@ -170,11 +175,11 @@ class Simulation {
         //Destructor for Simulation
         ~Simulation();
         //FUNCTIONS USED IN CALCULATION
+        //Function to define the constants used in calculation (Default values)
         void setConstants();
         //Function to define the constants used in calculation (Input values)
         void setConstants(double c_G_,
              double pixelSize_,
-             double density_,
              double timeInterval_);
         //Get function for xRes
         int getXRes();
@@ -234,8 +239,6 @@ class Simulation {
         double c_G;
         //Size to use for the length or height of a pixel, in meters
         double pixelSize;
-        //Density, in (kg)/(m^3)
-        double density;
         //Time interval between calculations, in seconds
         double timeInterval;
 };

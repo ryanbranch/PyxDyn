@@ -42,11 +42,12 @@ Simulation::~Simulation() {
     }
 }
 
+//FUNCTIONS USED IN CALCULATION
 //Function to define the constants used in calculation (Default values)
 void Simulation::setConstants() {
     //Constants useful for calculations
     //G - Gravitational constant in (N * m^2)/(kg)
-    c_G = 667408000000;
+    c_G = .0000000000667408;
     //Size to use for the width or height of a pixel, in meters
     //NOTE: This is huge, 1 million meters per pixel.  Keep that in mind.
     pixelSize = 1000000;
@@ -54,7 +55,7 @@ void Simulation::setConstants() {
     //NOTE: Based on my calculations, this will vary extremely with the scale of
     //      the objects being displayed.  So for a planet sized object it should
     //      be maybe something around 1*10^6.  Not sure about other scales.
-    density = 1000;
+    //density = 1000;
     //Time interval between calculations, in seconds (1x10^9)
     //NOTE: 1 billion seconds = 31.68878 years.
     timeInterval = 1000000000;
@@ -63,16 +64,12 @@ void Simulation::setConstants() {
 //See default setConstants() for more information about values
 void Simulation::setConstants(double c_G_,
                               double pixelSize_,
-                              double density_,
                               double timeInterval_) {
     if (c_G_ != 0) {
         c_G = c_G_;
     }
     if (pixelSize_ != 0) {
         pixelSize = pixelSize_;
-    }
-    if (density_ != 0) {
-        density = density_;
     }
     if (timeInterval != 0) {
         timeInterval = timeInterval_;
@@ -105,7 +102,6 @@ Object* Simulation::getObject(int i) {
 }
 
 //FUNCTIONS USED IN CALCULATION
-
 //Initializes the xi and yi positions of all objects
 void Simulation::iPosInit() {
     for (int i = 0; i < numObjects; ++i){
@@ -197,25 +193,119 @@ double Simulation::updatePosY(double deltaPos, Object* obj) {
 //Calculates and applies the change in position for all objects
 void Simulation::deltaPos() {
     for (int i = 0; i < numObjects; ++i) {
-        Object* obj = objects[i];
+        Object* obj1 = objects[i];
         //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE START OF CALCULATION
         //      (Done first because they depend on the INITIAL position, etc.)
-        obj->xcSet();
-        obj->ycSet();
-        
+        obj1->xcSet();
+        obj1->ycSet();
+    }
+    for (int i = 0; i < numObjects; ++i) {
+    Object* obj1 = objects[i];
+        for (int j = 0; j < numObjects; ++j) {
+            Object* obj2 = objects[j];
+            if (obj1 != obj2) {
+                //NOTE: This entire section is very unorganized and most
+                //      importantly inefficient, with many unnecessary variable
+                //      creations/assignments, as well as unnecessarily calling
+                //      functions more times than needed.  When attempting to
+                //      speed things up, it will be a huge priority to
+                //      streamline this whole process.  The only reason I'm
+                //      writing it like this to begin with is so that I can
+                //      provide lots of console output for debugging.
+                double m1 = obj1->getMass();
+                double m2 = obj2->getMass();
+                cout << "Calculations between objects[" << i << "] ";
+                cout << "and objects[" << j << "]" << endl;
+                cout << "++++++++++++++++++++++++++++++++" << endl;
+                cout << "MASS OF OBJECT " << i << ": " << m1 << endl;
+                cout << "MASS OF OBJECT " << j << ": " << m2 << endl;
+                double dBetween = distBetween(obj1, obj2);
+                cout << "DISTANCE BETWEEN: " << dBetween << endl;
+                double xComp = xComponent(obj1, obj2);
+                double yComp = yComponent(obj1, obj2);
+                cout << "X COMPONENT: " << xComp << endl;
+                cout << "Y COMPONENT: " << yComp << endl;
+                
+                //F O R C E S
+                //NOTE: Eventually, when there are multiple forces, I want to
+                //      handle this as a vector of x forces and a vector of y
+                //      forces, writing values to each element as calculations
+                //      go through and then summing the vectors to a final
+                //      double value at the end for use in accelerations.
+                //GRAVITY
+                double fG = gForce(obj1, obj2);
+                double fGx = gForceX(obj1, obj2);
+                double fGy = gForceY(obj1, obj2);
+                cout << "FORCE DUE TO GRAVITY: " << fG << endl;
+                cout << "X FORCE DUE TO GRAVITY: " << fGx << endl;
+                cout << "Y FORCE DUE TO GRAVITY: " << fGy << endl;
+                //TOTAL
+                double fTx = fGx;
+                double fTy = fGy;
+                cout << "TOTAL X FORCE: " << fTx << endl;
+                cout << "TOTAL Y FORCE: " << fTy << endl;
+                
+                //ACCELERATIONS
+                double ax = fTx / m1;
+                double ay = fTy / m1;
+                cout << "X ACCELERATION: " << ax << endl;
+                cout << "Y ACCELERATION: " << ay << endl;
+                
+                //V E L O C I T I E S
+                //INITIAL
+                cout << "INITIAL X VELOCITY: " << obj1->vxiGet() << endl;
+                cout << "INITIAL Y VELOCITY: " << obj1->vyiGet() << endl;
+                //CHANGE
+                double vxDelta = ax * timeInterval;
+                double vyDelta = ay * timeInterval;
+                cout << "CHANGE IN X VELOCITY: " << vxDelta << endl;
+                cout << "CHANGE IN Y VELOCITY: " << vyDelta << endl;
+                //FINAL
+                obj1->vxfSet(obj1->vxiGet() + vxDelta);
+                obj1->vyfSet(obj1->vyiGet() + vyDelta);
+                cout << "FINAL X VELOCITY: " << obj1->vxfGet() << endl;
+                cout << "FINAL Y VELOCITY: " << obj1->vyfGet() << endl;
+                
+                //P O S I T I O N S
+                //INITIAL
+                cout << "INITIAL X POSITION: " << obj1->xiGet() << endl;
+                cout << "INITIAL Y POSITION: " << obj1->yiGet() << endl;
+                //CHANGE
+                double xDelta = obj1->vxfGet() * timeInterval;
+                double yDelta = obj1->vyfGet() * timeInterval;
+                cout << "CHANGE IN X POSITION: " << vxDelta << endl;
+                cout << "CHANGE IN Y POSITION: " << vyDelta << endl;
+                //FINAL
+                obj1->xfSet(obj1->xiGet() + xDelta);
+                obj1->yfSet(obj1->yiGet() + yDelta);
+                cout << "FINAL X POSITION: " << obj1->xfGet() << endl;
+                cout << "FINAL Y POSITION: " << obj1->yfGet() << endl;
+            }
+            else {
+                cout << "No calculations necessary between object and itself." << endl;
+            }
+            cout << endl;
+        }
+        cout << endl;
+    }
+    for (int i = 0; i < numObjects; ++i) {
+        Object* obj1 = objects[i];
         //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE END OF CALCULATION
         //      (Done last because they update INITIAL values for next iter)
-        obj->xiSet(obj->xfGet());
-        obj->yiSet(obj->yfGet());
-        obj->vxiSet(obj->vxfGet());
-        obj->vyiSet(obj->vyfGet());
-    }
-        
+        obj1->xiSet(obj1->xfGet());
+        obj1->yiSet(obj1->yfGet());
+        obj1->vxiSet(obj1->vxfGet());
+        obj1->vyiSet(obj1->vyfGet());
+    }    
     //NOTE: Things like forces should be calculated between the object and every
     //      other object but itself.  Do this by iterating through the objects
     //      array and calculating for all pointers where the object pointer at
     //      the current index is not equal to obj (because that signifies that
     //      the object pointer at the current index IS obj
+    //NOTE: I believe I have now taken this into account, but the problem is
+    //      that some info is unnecessarily re-calculated, for example, the
+    //      force of object 2 on object 1 is the same as the other way around.
+    //      I'll need to think of a smart way to handle this.
 }
 
 //CLASS: Color
@@ -428,6 +518,21 @@ Object::Object(const Object &other) {
     */
 }
 
+//FUNCTIONS USED IN CALCULATION
+//Function to define the constants used in calculation (Default values)
+void Object::setConstants() {
+    //Density, in (kg)/(m^3)
+    //NOTE: Based on my calculations, this will vary extremely with the scale of
+    //      the objects being displayed.  So for a planet sized object it should
+    //      be maybe something around 1*10^6.  Not sure about other scales.
+    density = 1000;
+}
+//Function to define the constants used in calculation (Input values)
+void Object::setConstants(double density_) {
+    //See default setConstants() for more information about values
+    density = density_;
+}
+
 //Get function for ptrColor
 Color* Object::getPtrColor() {
     return ptrColor;
@@ -507,7 +612,13 @@ double Object::getMass() {
 }
 //Set function for mass (calculated based on density and area)
 void Object::setMass() {
-    mass = (double(width * height) * density);
+    //cout << "width = " << width << endl;
+    //cout << "height = " << height << endl;
+    //cout << "density = " << density << endl;
+    //NOTE:  Object DOES NOT HAVE ACCESS TO pixelSize FROM Simulation.
+    //       Where it says 1000000, it should be accessing pixelSize.
+    mass = ((double(width * 1000000) * double(height * 1000000)) * density);
+    //cout << "mass = " << mass << endl;
 }
 
 //Get function for density
@@ -525,7 +636,10 @@ double Object::xcGet() {
 }
 //Set function for xc (calculated based on width and xi)
 void Object::xcSet() {
-    xc = xi + (double(width) / 2);
+    //NOTE:  Object DOES NOT HAVE ACCESS TO pixelSize FROM Simulation.
+    //       Where it says 1000000, it should be accessing pixelSize.
+    xc = xi + ((double(width) / 2) * 1000000);
+    cout << "set xc to " << xc << endl;
 }
 
 //Get function for yc
@@ -534,7 +648,10 @@ double Object::ycGet() {
 }
 //Set function for yc (calculated based on height and yi)
 void Object::ycSet() {
-    yc = yi + (double(height) / 2);
+    //NOTE:  Object DOES NOT HAVE ACCESS TO pixelSize FROM Simulation.
+    //       Where it says 1000000, it should be accessing pixelSize.
+    yc = yi + ((double(height) / 2) * 1000000);
+    cout << "set yc to " << yc << endl;
 }
 
 //Get function for xi
@@ -544,6 +661,7 @@ double Object::xiGet() {
 //Set function for xi
 void Object::xiSet(double xi_) {
     xi = xi_;
+    cout << "set xi to " << xi << endl;
 }
 
 //Get function for yi
@@ -553,6 +671,7 @@ double Object::yiGet() {
 //Set function for yi
 void Object::yiSet(double yi_) {
     yi = yi_;
+    cout << "set yi to " << yi << endl;
 }
 
 //Get function for xf
@@ -675,6 +794,14 @@ Simulation* inCsv(string filename) {
     cout << "yRes: " << yRes << endl;
     cout << "numObjects: " << numObjects << endl;
     cout << "================================" << endl;
+    
+    //NOTE: Things like default object density, pixel size, etc. should all be
+    //      set based on inputs, however I'm more concerned with calculation
+    //      functionality at this point so I'm temporarily setting them by hand
+    //double defDensity = 1000;
+    double defPixelSize = 1000000;
+    //NOTE: This also means that I should maybe bring density back to being a
+    //      member of simulation instead of object.  I'm not quite sure yet
     
     Color* tempColors[numObjects];
     Object* tempObjects[numObjects];
@@ -824,10 +951,20 @@ Simulation* inCsv(string filename) {
         tempColors[i] = new Color(r, g, b);
         tempObjects[i] = new Object(x, y, tempColors[i], width, height);
         tempObjects[i]->buildData();
+        //Sets object values for constants, such as density.  If there is
+        //density input, this should take in arguments
+        tempObjects[i]->setConstants();
+        //Sets initial values for mass, velocity, and position
+        tempObjects[i]->setMass();
+        tempObjects[i]->xiSet(x * defPixelSize);
+        tempObjects[i]->yiSet(y * defPixelSize);
+        tempObjects[i]->vxiSet(0);
+        tempObjects[i]->vyiSet(0);
         cout << "Built data for object " << i << endl;
         cout << "OBJECT: " << i << endl;
         cout << "witdh: " << width << endl;
         cout << "height: " << height << endl;
+        cout << "mass: " << tempObjects[i]->getMass() << endl;
         cout << "r: " << r << endl;
         cout << "g: " << g << endl;
         cout << "b: " << b << endl;
@@ -900,6 +1037,12 @@ int main(int argc, char* argv[]) {
     //Gets input data and stores it as a pointer to simulation
     Simulation* sim = inCsv(inFilename);
     sim->setConstants();
+    
+    //Sets initial position and velocity values for all objects
+    
+    //Runs one iteration of the simulation
+    sim->deltaPos();
+    
     outCsv(outFilename, sim);
     //Deletes the simulation
     delete sim;
