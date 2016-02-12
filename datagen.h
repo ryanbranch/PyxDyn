@@ -87,7 +87,7 @@ class Object {
         //Get function for mass
         double getMass();
         //Set function for mass (calculated based on density and area)
-        void setMass();
+        void setMass(double sizeOfPixel);
         //DENSITY
         //Get function for density
         double getDensity();
@@ -96,11 +96,11 @@ class Object {
         //Get function for xc
         double xcGet();
         //Set function for xc (calculated based on width and xi)
-        void xcSet();
+        void xcSet(double sizeOfPixel);
         //Get function for yc
         double ycGet();
         //Set function for yc (calculated based on height and yi)
-        void ycSet();
+        void ycSet(double sizeOfPixel);
         //Get function for xi
         double xiGet();
         //Set function for xi
@@ -191,6 +191,14 @@ class Simulation {
         Color* getColor(int i);
         //Get function for objects
         Object* getObject(int i);
+        //Get function for inFilename
+        string getInFilename();
+        //Set function for inFilename
+        void setInFilename(string name);
+        //Get function for outFilename
+        string getOutFilename();
+        //Set function for outFilename
+        void setOutFilename(string name);
         
         //Functions used in calculation
         //Initializes the xi and yi positions of all objects
@@ -233,6 +241,8 @@ class Simulation {
         int numObjects;
         Color** colors;
         Object** objects;
+        string outFilename;
+        string inFilename;
         
         //Constants useful for calculations
         //G - Gravitational constant in (N * m^2)/(kg)
@@ -248,4 +258,4 @@ class Simulation {
 //Function to take in .csv data
 Simulation* inCsv(string filename);
 //Function to write csv output data
-void outCsv(string filename, Simulation* theSim);
+void outCsv(Simulation* theSim);

@@ -57,8 +57,8 @@ void Simulation::setConstants() {
     //      be maybe something around 1*10^6.  Not sure about other scales.
     //density = 1000;
     //Time interval between calculations, in seconds (1x10^9)
-    //NOTE: 1 billion seconds = 31.68878 years.
-    timeInterval = 1000000000;
+    //NOTE: 100 million seconds = 3.168878 years.
+    timeInterval = 100000000;
 }
 //Function to define the constants used in calculation (Input values)
 //See default setConstants() for more information about values
@@ -99,6 +99,23 @@ Color* Simulation::getColor(int i) {
 //Returns pointer to Object at index i of objects
 Object* Simulation::getObject(int i) {
     return objects[i];
+}
+
+//Get function for inFilename
+string Simulation::getInFilename() {
+    return inFilename;
+}
+//Set function for inFilename
+void Simulation::setInFilename(string name) {
+    inFilename = name;
+}
+//Get function for outFilename
+string Simulation::getOutFilename() {
+    return outFilename;
+}
+//Set function for outFilename
+void Simulation::setOutFilename(string name) {
+    outFilename = name;
 }
 
 //FUNCTIONS USED IN CALCULATION
@@ -196,11 +213,12 @@ void Simulation::deltaPos() {
         Object* obj1 = objects[i];
         //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE START OF CALCULATION
         //      (Done first because they depend on the INITIAL position, etc.)
-        obj1->xcSet();
-        obj1->ycSet();
+        obj1->xcSet(pixelSize);
+        obj1->ycSet(pixelSize);
     }
+    
     for (int i = 0; i < numObjects; ++i) {
-    Object* obj1 = objects[i];
+        Object* obj1 = objects[i];
         for (int j = 0; j < numObjects; ++j) {
             Object* obj2 = objects[j];
             if (obj1 != obj2) {
@@ -288,15 +306,42 @@ void Simulation::deltaPos() {
         }
         cout << endl;
     }
-    for (int i = 0; i < numObjects; ++i) {
-        Object* obj1 = objects[i];
-        //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE END OF CALCULATION
-        //      (Done last because they update INITIAL values for next iter)
-        obj1->xiSet(obj1->xfGet());
-        obj1->yiSet(obj1->yfGet());
-        obj1->vxiSet(obj1->vxfGet());
-        obj1->vyiSet(obj1->vyfGet());
-    }    
+    
+    ofstream outputFile(outFilename.c_str(), ofstream::app);
+    try {
+        if (outputFile.is_open()) {
+            for (int i = 0; i < numObjects; ++i) {
+                Object* obj1 = objects[i];
+                //NOTE: REMEMBER TO SET VARIABLES LIKE THIS AT THE END OF CALCULATION
+                //      (Done last because they update INITIAL values for next iter)
+                obj1->xiSet(obj1->xfGet());
+                obj1->yiSet(obj1->yfGet());
+                obj1->vxiSet(obj1->vxfGet());
+                obj1->vyiSet(obj1->vyfGet());
+                obj1->xPosSet(round(obj1->xiGet() / pixelSize));
+                obj1->yPosSet(round(obj1->yiGet() / pixelSize));
+                outputFile << obj1->xPosGet() << ",";
+                outputFile << obj1->yPosGet();
+                if (i == (numObjects - 1)) {
+                    outputFile << endl;
+                }
+                else {
+                    outputFile << ",";
+                }
+            }    
+        }
+        else {
+            string e = "Unable to open output file: ";
+            e += outFilename;
+            throw e;
+        }
+        outputFile.close();
+    }
+    catch (string exception) {
+        cout << exception << endl;
+        exit(1);
+    }
+
     //NOTE: Things like forces should be calculated between the object and every
     //      other object but itself.  Do this by iterating through the objects
     //      array and calculating for all pointers where the object pointer at
@@ -611,13 +656,11 @@ double Object::getMass() {
     return mass;
 }
 //Set function for mass (calculated based on density and area)
-void Object::setMass() {
+void Object::setMass(double sizeOfPixel) {
     //cout << "width = " << width << endl;
     //cout << "height = " << height << endl;
     //cout << "density = " << density << endl;
-    //NOTE:  Object DOES NOT HAVE ACCESS TO pixelSize FROM Simulation.
-    //       Where it says 1000000, it should be accessing pixelSize.
-    mass = ((double(width * 1000000) * double(height * 1000000)) * density);
+    mass = (double(width * height) * pow(sizeOfPixel, 2) * density);
     //cout << "mass = " << mass << endl;
 }
 
@@ -635,10 +678,8 @@ double Object::xcGet() {
     return xc;
 }
 //Set function for xc (calculated based on width and xi)
-void Object::xcSet() {
-    //NOTE:  Object DOES NOT HAVE ACCESS TO pixelSize FROM Simulation.
-    //       Where it says 1000000, it should be accessing pixelSize.
-    xc = xi + ((double(width) / 2) * 1000000);
+void Object::xcSet(double sizeOfPixel) {
+    xc = xi + ((double(width) / 2) * sizeOfPixel);
     cout << "set xc to " << xc << endl;
 }
 
@@ -647,10 +688,8 @@ double Object::ycGet() {
     return yc;
 }
 //Set function for yc (calculated based on height and yi)
-void Object::ycSet() {
-    //NOTE:  Object DOES NOT HAVE ACCESS TO pixelSize FROM Simulation.
-    //       Where it says 1000000, it should be accessing pixelSize.
-    yc = yi + ((double(height) / 2) * 1000000);
+void Object::ycSet(double sizeOfPixel) {
+    yc = yi + ((double(height) / 2) * sizeOfPixel);
     cout << "set yc to " << yc << endl;
 }
 
@@ -661,7 +700,7 @@ double Object::xiGet() {
 //Set function for xi
 void Object::xiSet(double xi_) {
     xi = xi_;
-    cout << "set xi to " << xi << endl;
+    //cout << "set xi to " << xi << endl;
 }
 
 //Get function for yi
@@ -671,7 +710,7 @@ double Object::yiGet() {
 //Set function for yi
 void Object::yiSet(double yi_) {
     yi = yi_;
-    cout << "set yi to " << yi << endl;
+    //cout << "set yi to " << yi << endl;
 }
 
 //Get function for xf
@@ -736,6 +775,7 @@ Simulation* inCsv(string filename) {
     int xRes;
     int yRes;
     int numObjects;
+    double pixelSize;
     string row;
     string col;
     
@@ -784,6 +824,18 @@ Simulation* inCsv(string filename) {
                     throw e;
                 }
             }
+            //Checks 
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: pixelSize (0, 3)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> pixelSize)) {
+                    string e = "pixelSize value not properly formatted: (0, 3)";
+                    throw e;
+                }
+            }
         }
     }
     catch (string exception) {
@@ -795,11 +847,6 @@ Simulation* inCsv(string filename) {
     cout << "numObjects: " << numObjects << endl;
     cout << "================================" << endl;
     
-    //NOTE: Things like default object density, pixel size, etc. should all be
-    //      set based on inputs, however I'm more concerned with calculation
-    //      functionality at this point so I'm temporarily setting them by hand
-    //double defDensity = 1000;
-    double defPixelSize = 1000000;
     //NOTE: This also means that I should maybe bring density back to being a
     //      member of simulation instead of object.  I'm not quite sure yet
     
@@ -955,9 +1002,9 @@ Simulation* inCsv(string filename) {
         //density input, this should take in arguments
         tempObjects[i]->setConstants();
         //Sets initial values for mass, velocity, and position
-        tempObjects[i]->setMass();
-        tempObjects[i]->xiSet(x * defPixelSize);
-        tempObjects[i]->yiSet(y * defPixelSize);
+        tempObjects[i]->setMass(pixelSize);
+        tempObjects[i]->xiSet(x * pixelSize);
+        tempObjects[i]->yiSet(y * pixelSize);
         tempObjects[i]->vxiSet(0);
         tempObjects[i]->vyiSet(0);
         cout << "Built data for object " << i << endl;
@@ -978,13 +1025,14 @@ Simulation* inCsv(string filename) {
                                             numObjects,
                                             tempColors,
                                             tempObjects);
+    simulation->setInFilename(filename);
     return simulation;
 }
 
 //Function to write csv output data
-void outCsv(string filename, Simulation* theSim) {
+void outCsv(Simulation* theSim) {
     //File output for objects
-    ofstream outputFile(filename.c_str());
+    ofstream outputFile(theSim->getOutFilename().c_str());
     try {
         if (outputFile.is_open()) {
             outputFile << theSim->getXRes() << ",";
@@ -1012,7 +1060,7 @@ void outCsv(string filename, Simulation* theSim) {
         }
         else {
             string e = "Unable to open output file: ";
-            e += filename;
+            e += theSim->getOutFilename();
             throw e;
         }
         outputFile.close();
@@ -1024,6 +1072,9 @@ void outCsv(string filename, Simulation* theSim) {
 }
 
 int main(int argc, char* argv[]) {
+    //NOTE: Add in a system so that numFrames can be generated from input file.
+    //      also timeInterval. These should be high priority because very easy.
+    int numFrames = 50;
     string outFilename;
     string inFilename;
     if (argc == 3) {
@@ -1036,15 +1087,21 @@ int main(int argc, char* argv[]) {
     }
     //Gets input data and stores it as a pointer to simulation
     Simulation* sim = inCsv(inFilename);
+    sim->setOutFilename(outFilename);
     sim->setConstants();
     
     //Sets initial position and velocity values for all objects
     
-    //Runs one iteration of the simulation
-    sim->deltaPos();
+    //Populates initial output data
+    outCsv(sim);
     
-    outCsv(outFilename, sim);
+    //Runs numFrames iterations of the simulation
+    for (int i = 0; i < numFrames; ++i) {
+        sim->deltaPos();
+    }
+    
     //Deletes the simulation
     delete sim;
+    sim = 0;
     return 0;  
 }
