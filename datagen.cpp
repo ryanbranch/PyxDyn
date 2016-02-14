@@ -36,10 +36,13 @@ Simulation::Simulation(int xRes_,
 Simulation::~Simulation() {
     //cout << "Simulation dtor" << endl;
     //Run destructor for any colors or objects
+    cout << "num objects: " << numObjects << endl;
     for (int i = 0; i < numObjects; ++i) {
         delete colors[i];
         delete objects[i];
     }
+    delete[] colors;
+    delete[] objects;
 }
 
 //FUNCTIONS USED IN CALCULATION
@@ -150,12 +153,14 @@ double Simulation::distBetween(Object* obj1, Object* obj2) {
 //A negative value implies that obj2 is to the left of obj1
 double Simulation::xComponent(Object* obj1, Object* obj2) {
     return ((xDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
+    cout << "X DISTANCE BETWEEN: " << xDistBetween(obj1, obj2) << endl;
 }
 //Returns the fractional y component of any force acting between two objects
 //A positive value implies that obj2 is below obj1
 //A negative value implies that obj2 is above obj1
 double Simulation::yComponent(Object* obj1, Object* obj2) {
     return ((yDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
+    cout << "Y DISTANCE BETWEEN: " << yDistBetween(obj1, obj2) << endl;
 }
 //Returns the gravitational force between two objects, from the center
 double Simulation::gForce(Object* obj1, Object* obj2) {
@@ -219,6 +224,14 @@ void Simulation::deltaPos() {
     
     for (int i = 0; i < numObjects; ++i) {
         Object* obj1 = objects[i];
+        double m1 = obj1->getMass();
+        //NOTE: should be [2 * numObjects]
+        double forces[6] = {0};
+        cout << "FORCES ARRAY: ";
+        for (int h = 0; h < 4; ++h) {
+            cout << forces[h] << ", ";
+        }
+        cout << endl;
         for (int j = 0; j < numObjects; ++j) {
             Object* obj2 = objects[j];
             if (obj1 != obj2) {
@@ -230,7 +243,6 @@ void Simulation::deltaPos() {
                 //      streamline this whole process.  The only reason I'm
                 //      writing it like this to begin with is so that I can
                 //      provide lots of console output for debugging.
-                double m1 = obj1->getMass();
                 double m2 = obj2->getMass();
                 cout << "Calculations between objects[" << i << "] ";
                 cout << "and objects[" << j << "]" << endl;
@@ -243,6 +255,9 @@ void Simulation::deltaPos() {
                 double yComp = yComponent(obj1, obj2);
                 cout << "X COMPONENT: " << xComp << endl;
                 cout << "Y COMPONENT: " << yComp << endl;
+                cout << "X DISTANCE BETWEEN: " << xDistBetween(obj1, obj2) << endl;
+                cout << "Y DISTANCE BETWEEN: " << yDistBetween(obj1, obj2) << endl;
+                
                 
                 //F O R C E S
                 //NOTE: Eventually, when there are multiple forces, I want to
@@ -260,50 +275,71 @@ void Simulation::deltaPos() {
                 //TOTAL
                 double fTx = fGx;
                 double fTy = fGy;
-                cout << "TOTAL X FORCE: " << fTx << endl;
-                cout << "TOTAL Y FORCE: " << fTy << endl;
                 
-                //ACCELERATIONS
-                double ax = fTx / m1;
-                double ay = fTy / m1;
-                cout << "X ACCELERATION: " << ax << endl;
-                cout << "Y ACCELERATION: " << ay << endl;
-                
-                //V E L O C I T I E S
-                //INITIAL
-                cout << "INITIAL X VELOCITY: " << obj1->vxiGet() << endl;
-                cout << "INITIAL Y VELOCITY: " << obj1->vyiGet() << endl;
-                //CHANGE
-                double vxDelta = ax * timeInterval;
-                double vyDelta = ay * timeInterval;
-                cout << "CHANGE IN X VELOCITY: " << vxDelta << endl;
-                cout << "CHANGE IN Y VELOCITY: " << vyDelta << endl;
-                //FINAL
-                obj1->vxfSet(obj1->vxiGet() + vxDelta);
-                obj1->vyfSet(obj1->vyiGet() + vyDelta);
-                cout << "FINAL X VELOCITY: " << obj1->vxfGet() << endl;
-                cout << "FINAL Y VELOCITY: " << obj1->vyfGet() << endl;
-                
-                //P O S I T I O N S
-                //INITIAL
-                cout << "INITIAL X POSITION: " << obj1->xiGet() << endl;
-                cout << "INITIAL Y POSITION: " << obj1->yiGet() << endl;
-                //CHANGE
-                double xDelta = obj1->vxfGet() * timeInterval;
-                double yDelta = obj1->vyfGet() * timeInterval;
-                cout << "CHANGE IN X POSITION: " << vxDelta << endl;
-                cout << "CHANGE IN Y POSITION: " << vyDelta << endl;
-                //FINAL
-                obj1->xfSet(obj1->xiGet() + xDelta);
-                obj1->yfSet(obj1->yiGet() + yDelta);
-                cout << "FINAL X POSITION: " << obj1->xfGet() << endl;
-                cout << "FINAL Y POSITION: " << obj1->yfGet() << endl;
+                forces[2 * j] = fTx;
+                forces[2* j + 1] = fTy;
+                cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
+                cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
             }
             else {
                 cout << "No calculations necessary between object and itself." << endl;
+                forces[2 * j] = 0;
+                forces[2* j + 1] = 0;
+                cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
+                cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
             }
-            cout << endl;
+            cout << endl << endl;
         }
+        cout << "FORCES ARRAY: ";
+        for (int h = 0; h < 4; ++h) {
+            cout << forces[h] << ", ";
+        }
+        cout << endl;
+        cout << endl << "===ADDING FORCES TOGETHER===" << endl << endl;
+        
+        double totalX = 0;
+        double totalY = 0;
+        for (int i = 0; i < (numObjects); i++) {
+            totalX += forces[2 * i];
+            totalY += forces[(2 * i) + 1];
+        }
+        cout << "TOTAL TOTAL X FORCE: " << totalX << endl;
+        cout << "TOTAL TOTAL Y FORCE: " << totalY << endl << endl;
+        //ACCELERATIONS
+        double ax = totalX / m1;
+        double ay = totalY / m1;
+        cout << "X ACCELERATION: " << ax << endl;
+        cout << "Y ACCELERATION: " << ay << endl;
+        
+        //V E L O C I T I E S
+        //INITIAL
+        cout << "INITIAL X VELOCITY: " << obj1->vxiGet() << endl;
+        cout << "INITIAL Y VELOCITY: " << obj1->vyiGet() << endl;
+        //CHANGE
+        double vxDelta = ax * timeInterval;
+        double vyDelta = ay * timeInterval;
+        cout << "CHANGE IN X VELOCITY: " << vxDelta << endl;
+        cout << "CHANGE IN Y VELOCITY: " << vyDelta << endl;
+        //FINAL
+        obj1->vxfSet(obj1->vxiGet() + vxDelta);
+        obj1->vyfSet(obj1->vyiGet() + vyDelta);
+        cout << "FINAL X VELOCITY: " << obj1->vxfGet() << endl;
+        cout << "FINAL Y VELOCITY: " << obj1->vyfGet() << endl;
+        
+        //P O S I T I O N S
+        //INITIAL
+        cout << "INITIAL X POSITION: " << obj1->xiGet() << endl;
+        cout << "INITIAL Y POSITION: " << obj1->yiGet() << endl;
+        //CHANGE
+        double xDelta = obj1->vxfGet() * timeInterval;
+        double yDelta = obj1->vyfGet() * timeInterval;
+        cout << "CHANGE IN X POSITION: " << vxDelta << endl;
+        cout << "CHANGE IN Y POSITION: " << vyDelta << endl;
+        //FINAL
+        obj1->xfSet(obj1->xiGet() + xDelta);
+        obj1->yfSet(obj1->yiGet() + yDelta);
+        cout << "FINAL X POSITION: " << obj1->xfGet() << endl;
+        cout << "FINAL Y POSITION: " << obj1->yfGet() << endl;
         cout << endl;
     }
     
@@ -535,8 +571,8 @@ Object::Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_) 
 //Destructor for Object
 Object::~Object(){
     //cout << "Object dtor" << endl;
-    //delete ptrColor;
-    //delete[] ptrData;
+    delete ptrColor;
+    delete[] ptrData;
 }
 
 //Assignment operator for Object
@@ -850,8 +886,9 @@ Simulation* inCsv(string filename) {
     //NOTE: This also means that I should maybe bring density back to being a
     //      member of simulation instead of object.  I'm not quite sure yet
     
-    Color* tempColors[numObjects];
-    Object* tempObjects[numObjects];
+    //NOTE: these should be [numObjects]
+    Color* tempColors[3];
+    Object* tempObjects[3];
     //File input for widths, heights, colors, and positions of objects
     for (int i = 0; i < numObjects; ++i) {
         int width;
@@ -863,130 +900,131 @@ Simulation* inCsv(string filename) {
         int y;
         try {
             //Ensures row is present
+            ostringstream estream;
             if (!(inputFile >> row)) {
                 string e = "Row appears to be missing: ";
-                e += i;
-                throw e;
+                estream << e << i;
+                throw estream.str();
             }
             else {
                 istringstream ss(row);              
                 //Checks x
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: x (";
-                    e += i;
+                    estream << e << i;
                     e += ", 0)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> x)) {
                         cout << col << endl;
                         string e = "x value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 0)";
-                        throw e;
+                        throw estream.str();
                     }
                 }
                 //Checks y
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: y (";
-                    e += i;
+                    estream << e << i;
                     e += ", 1)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> y)) {
                         cout << col << endl;
                         string e = "y value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 1)";
-                        throw e;
+                        throw estream.str();
                     }
                 }
                 //Checks r
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: r (";
-                    e += i;
+                    estream << e << i;
                     e += ", 2)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> r)) {
                         cout << col << endl;
                         string e = "r value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 2)";
-                        throw e;
+                        throw estream.str();
                     }
                 }                
                 //Checks g
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: g (";
-                    e += i;
+                    estream << e << i;
                     e += ", 3)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> g)) {
                         cout << col << endl;
                         string e = "g value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 3)";
-                        throw e;
+                        throw estream.str();
                     }
                 }
                 //Checks b
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: b (";
-                    e += i;
+                    estream << e << i;
                     e += ", 4)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> b)) {
                         cout << col << endl;
                         string e = "b value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 4)";
-                        throw e;
+                        throw estream.str();
                     }
                 }
                 //Checks width
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: width (";
-                    e += i;
+                    estream << e << i;
                     e += ", 5)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> width)) {
                         cout << col << endl;
                         string e = "width value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 5)";
-                        throw e;
+                        throw estream.str();
                     }
                 }
                 //Checks height
                 if (!(getline(ss, col, ','))) {
                     string e = "Input file not properly formatted: height (";
-                    e += i;
+                    estream << e << i;
                     e += ", 6)";
-                    throw e;
+                    throw estream.str();
                 }
                 else{
                     istringstream stoi(col);
                     if (!(stoi >> height)) {
                         cout << col << endl;
                         string e = "height value not properly formatted: (";
-                        e += i;
+                        estream << e << i;
                         e += ", 6)";
-                        throw e;
+                        throw estream.str();
                     }
                 }  
             }
@@ -1026,6 +1064,15 @@ Simulation* inCsv(string filename) {
                                             tempColors,
                                             tempObjects);
     simulation->setInFilename(filename);
+    /*
+    //Attempting to fix memory leaks for this function
+    for (int i = 0; i < numObjects; ++i) {
+        delete tempColors[i];
+        tempColors[i] = 0;
+        delete tempObjects[i];
+        tempObjects[i] = 0;
+    }
+    */
     return simulation;
 }
 
@@ -1074,7 +1121,7 @@ void outCsv(Simulation* theSim) {
 int main(int argc, char* argv[]) {
     //NOTE: Add in a system so that numFrames can be generated from input file.
     //      also timeInterval. These should be high priority because very easy.
-    int numFrames = 50;
+    int numFrames = 1;
     string outFilename;
     string inFilename;
     if (argc == 3) {
