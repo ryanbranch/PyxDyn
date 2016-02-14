@@ -222,89 +222,118 @@ void Simulation::deltaPos() {
         obj1->ycSet(pixelSize);
     }
     
+    //In order to increase the efficiency of this program, we attempt to
+    //eliminate any unnecessary recalculation of .  This is done by mapping
+    //the total forces to a square grid with length numObjects and recognizing
+    //that the after the total force from m to n is calculated, we can treat
+    //the total force from n to m as the negative of the previously calculated
+    //value.
+    double* forceGrid = new double[2 * numObjects * numObjects];
     for (int i = 0; i < numObjects; ++i) {
         Object* obj1 = objects[i];
         double m1 = obj1->getMass();
-        //NOTE: should be [2 * numObjects]
-        double forces[6] = {0};
+        double* forces = new double[2 * numObjects];
         cout << "FORCES ARRAY: ";
         for (int h = 0; h < 4; ++h) {
+            //NOTE: THIS ONE LINE BELOW: WHY DO I HAVE TO DO THAT HERE? SHOULDN'T IT INITIALIZE TO ZERO? BUT IT DOESN'T.  REMOVING THIS LINE BREAKS THE CODE.  THIS IS WHAT MAKES ME THINK THE CALCULATIONS MAY BE FLAWED.
+            forces[h] = 0;
             cout << forces[h] << ", ";
         }
         cout << endl;
         for (int j = 0; j < numObjects; ++j) {
             Object* obj2 = objects[j];
             if (obj1 != obj2) {
-                //NOTE: This entire section is very unorganized and most
-                //      importantly inefficient, with many unnecessary variable
-                //      creations/assignments, as well as unnecessarily calling
-                //      functions more times than needed.  When attempting to
-                //      speed things up, it will be a huge priority to
-                //      streamline this whole process.  The only reason I'm
-                //      writing it like this to begin with is so that I can
-                //      provide lots of console output for debugging.
-                double m2 = obj2->getMass();
-                cout << "Calculations between objects[" << i << "] ";
-                cout << "and objects[" << j << "]" << endl;
-                cout << "++++++++++++++++++++++++++++++++" << endl;
-                cout << "MASS OF OBJECT " << i << ": " << m1 << endl;
-                cout << "MASS OF OBJECT " << j << ": " << m2 << endl;
-                double dBetween = distBetween(obj1, obj2);
-                cout << "DISTANCE BETWEEN: " << dBetween << endl;
-                double xComp = xComponent(obj1, obj2);
-                double yComp = yComponent(obj1, obj2);
-                cout << "X COMPONENT: " << xComp << endl;
-                cout << "Y COMPONENT: " << yComp << endl;
-                cout << "X DISTANCE BETWEEN: " << xDistBetween(obj1, obj2) << endl;
-                cout << "Y DISTANCE BETWEEN: " << yDistBetween(obj1, obj2) << endl;
-                
-                
-                //F O R C E S
-                //NOTE: Eventually, when there are multiple forces, I want to
-                //      handle this as a vector of x forces and a vector of y
-                //      forces, writing values to each element as calculations
-                //      go through and then summing the vectors to a final
-                //      double value at the end for use in accelerations.
-                //GRAVITY
-                double fG = gForce(obj1, obj2);
-                double fGx = gForceX(obj1, obj2);
-                double fGy = gForceY(obj1, obj2);
-                cout << "FORCE DUE TO GRAVITY: " << fG << endl;
-                cout << "X FORCE DUE TO GRAVITY: " << fGx << endl;
-                cout << "Y FORCE DUE TO GRAVITY: " << fGy << endl;
-                //TOTAL
-                double fTx = fGx;
-                double fTy = fGy;
-                
-                forces[2 * j] = fTx;
-                forces[2* j + 1] = fTy;
-                cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
-                cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
+                //If the relevant force has not already been calculated, do so
+                //(Repeats only occur when i > j)
+                if (i <= j) {
+                    //NOTE: This entire section is very unorganized and most
+                    //      importantly inefficient, with many unnecessary variable
+                    //      creations/assignments, as well as unnecessarily calling
+                    //      functions more times than needed.  When attempting to
+                    //      speed things up, it will be a huge priority to
+                    //      streamline this whole process.  The only reason I'm
+                    //      writing it like this to begin with is so that I can
+                    //      provide lots of console output for debugging.
+                    double m2 = obj2->getMass();
+                    cout << "Calculations between objects[" << i << "] ";
+                    cout << "and objects[" << j << "]" << endl;
+                    cout << "++++++++++++++++++++++++++++++++" << endl;
+                    cout << "MASS OF OBJECT " << i << ": " << m1 << endl;
+                    cout << "MASS OF OBJECT " << j << ": " << m2 << endl;
+                    double dBetween = distBetween(obj1, obj2);
+                    cout << "DISTANCE BETWEEN: " << dBetween << endl;
+                    double xComp = xComponent(obj1, obj2);
+                    double yComp = yComponent(obj1, obj2);
+                    cout << "X COMPONENT: " << xComp << endl;
+                    cout << "Y COMPONENT: " << yComp << endl;
+                    cout << "X DISTANCE BETWEEN: " << xDistBetween(obj1, obj2) << endl;
+                    cout << "Y DISTANCE BETWEEN: " << yDistBetween(obj1, obj2) << endl;
+                    
+                    
+                    //F O R C E S
+                    //NOTE: Eventually, when there are multiple forces, I want to
+                    //      handle this as a vector of x forces and a vector of y
+                    //      forces, writing values to each element as calculations
+                    //      go through and then summing the vectors to a final
+                    //      double value at the end for use in accelerations.
+                    //GRAVITY
+                    double fG = gForce(obj1, obj2);
+                    double fGx = gForceX(obj1, obj2);
+                    double fGy = gForceY(obj1, obj2);
+                    cout << "FORCE DUE TO GRAVITY: " << fG << endl;
+                    cout << "X FORCE DUE TO GRAVITY: " << fGx << endl;
+                    cout << "Y FORCE DUE TO GRAVITY: " << fGy << endl;
+                    //TOTAL
+                    double fTx = fGx;
+                    double fTy = fGy;
+                    
+                    forces[2 * j] = fTx;
+                    forces[2* j + 1] = fTy;
+                    cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
+                    cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
+                }
+                else {
+                    //I came up with these functions by hand.  It's much easier
+                    //to visualize if drawn out as a grid of i rows by j cols,
+                    //where the numerical position on the grid at any point is
+                    //equal to (i * numObjects + j)
+                    int n = numObjects;
+                    forces[2 * j] = -1 * forceGrid[2 * ((i * n + j) -
+                                                        ((n - 1) * ((i * n + j) %
+                                                                    (n + 1))))];
+                    forces[2 * j + 1] = -1 * forceGrid[2 * ((i * n + j) -
+                                                            ((n - 1) * ((i * n + j) %
+                                                                        (n + 1)))) + 1];
+                }
             }
             else {
                 cout << "No calculations necessary between object and itself." << endl;
                 forces[2 * j] = 0;
-                forces[2* j + 1] = 0;
-                cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
-                cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
+                forces[2 * j + 1] = 0;
+                cout << "TOTAL X FORCE: " << 0 << endl;
+                cout << "TOTAL Y FORCE: " << 0 << endl;
             }
             cout << endl << endl;
         }
         cout << "FORCES ARRAY: ";
-        for (int h = 0; h < 4; ++h) {
+        for (int h = 0; h < 6; ++h) {
             cout << forces[h] << ", ";
         }
+        ////Populates forceGrid and determines total force
         cout << endl;
         cout << endl << "===ADDING FORCES TOGETHER===" << endl << endl;
         
         double totalX = 0;
         double totalY = 0;
-        for (int i = 0; i < (numObjects); i++) {
-            totalX += forces[2 * i];
-            totalY += forces[(2 * i) + 1];
+        for (int j = 0; j < (numObjects); ++j) {
+            forceGrid[2 * ((numObjects * i) + j)] = forces[2 * j];
+            forceGrid[2 * ((numObjects * i) + j) + 1] = forces[2 * j + 1];
+            totalX += forces[2 * j];
+            totalY += forces[(2 * j) + 1];
         }
         cout << "TOTAL TOTAL X FORCE: " << totalX << endl;
         cout << "TOTAL TOTAL Y FORCE: " << totalY << endl << endl;
+        
         //ACCELERATIONS
         double ax = totalX / m1;
         double ay = totalY / m1;
@@ -341,7 +370,12 @@ void Simulation::deltaPos() {
         cout << "FINAL X POSITION: " << obj1->xfGet() << endl;
         cout << "FINAL Y POSITION: " << obj1->yfGet() << endl;
         cout << endl;
+        
+        //deletes forces array
+        delete[] forces;
     }
+    //deletes forceGrid array
+    //delete[] forceGrid;
     
     ofstream outputFile(outFilename.c_str(), ofstream::app);
     try {

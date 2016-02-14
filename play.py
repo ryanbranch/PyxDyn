@@ -228,8 +228,6 @@ class Object:
         # height - the height of the object, in pixels
         # pos - the coordinates of the top-left point of the object, referenced
         #       from the top left of the room
-        #       NOTE: If either x or y go outside of the width or height range,
-        #             they should "wrap around"
         # newPos - the coordinates of the next position of the object
         # appearance - a list of (width * height) elements, describing the
         #              color of each pixel in the object.  Used mainly to build
@@ -426,7 +424,7 @@ def motionHandler(event, sim):
                                  width=obj.getWidth(),
                                  height=obj.getHeight())
     sim.setRowNum(sim.getRowNum() + 1)
-    sim.wrapAround()
+    #sim.wrapAround()
     data.close()
 
 def playVideo(sim):
