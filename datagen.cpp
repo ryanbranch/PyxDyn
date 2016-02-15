@@ -20,12 +20,20 @@ Simulation::Simulation(int xRes_,
                        int yRes_,
                        int numObjects_, 
                        Color** colors_,
-                       Object** objects_) :
+                       Object** objects_,
+                       double pixelSize_,
+                       double timeInterval_,
+                       int numIterations_,
+                       bool debugMode_) :
                        xRes(xRes_),
                        yRes(yRes_),
                        numObjects(numObjects_),
                        colors(new Color*[numObjects_]),
-                       objects(new Object*[numObjects_]) {
+                       objects(new Object*[numObjects_]),
+                       pixelSize(pixelSize_),
+                       timeInterval(timeInterval_),
+                       numIterations(numIterations_),
+                       debugMode(debugMode_) {
     for (int i = 0; i < numObjects_; ++i) {
         colors[i] = colors_[i];
         objects[i] = objects_[i];
@@ -34,9 +42,7 @@ Simulation::Simulation(int xRes_,
 
 //Destructor for Simulation
 Simulation::~Simulation() {
-    //cout << "Simulation dtor" << endl;
     //Run destructor for any colors or objects
-    cout << "num objects: " << numObjects << endl;
     for (int i = 0; i < numObjects; ++i) {
         delete colors[i];
         delete objects[i];
@@ -51,17 +57,6 @@ void Simulation::setConstants() {
     //Constants useful for calculations
     //G - Gravitational constant in (N * m^2)/(kg)
     c_G = .0000000000667408;
-    //Size to use for the width or height of a pixel, in meters
-    //NOTE: This is huge, 1 million meters per pixel.  Keep that in mind.
-    pixelSize = 1000000;
-    //Density, in (kg)/(m^3)
-    //NOTE: Based on my calculations, this will vary extremely with the scale of
-    //      the objects being displayed.  So for a planet sized object it should
-    //      be maybe something around 1*10^6.  Not sure about other scales.
-    //density = 1000;
-    //Time interval between calculations, in seconds (1x10^9)
-    //NOTE: 100 million seconds = 3.168878 years.
-    timeInterval = 100000000;
 }
 //Function to define the constants used in calculation (Input values)
 //See default setConstants() for more information about values
@@ -121,6 +116,46 @@ void Simulation::setOutFilename(string name) {
     outFilename = name;
 }
 
+//Get function for debugMode
+bool Simulation::getDebugMode() {
+    return debugMode;
+}
+//Set function for debugMode
+void Simulation::setDebugMode(bool mode) {
+    debugMode = mode;
+}
+
+//Size to use for the width or height of a pixel, in meters
+//Get function for pixelSize
+double Simulation::Simulation::getPixelSize() {
+    return pixelSize;
+}
+//Set function for pixelSize
+void Simulation::Simulation::setPixelSize(int size) {
+    pixelSize = size;
+}
+
+//Time interval between calculations, in seconds
+//Get function for timeInterval
+double Simulation::getTimeInterval() {
+    return timeInterval;
+}
+//Set function for timeInterval
+void Simulation::setTimeInterval(int time) {
+    timeInterval = time;
+}
+
+//Number of iterations to perform calculations for.  Essentially, how many
+//animation frames to generate
+//Get function for numIterations
+int Simulation::getNumIterations() {
+    return numIterations;
+}
+//Set function for numIterations
+void Simulation::setNumIterations(int num) {
+    numIterations = num;
+}
+
 //FUNCTIONS USED IN CALCULATION
 //Initializes the xi and yi positions of all objects
 void Simulation::iPosInit() {
@@ -153,31 +188,17 @@ double Simulation::distBetween(Object* obj1, Object* obj2) {
 //A negative value implies that obj2 is to the left of obj1
 double Simulation::xComponent(Object* obj1, Object* obj2) {
     return ((xDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
-    cout << "X DISTANCE BETWEEN: " << xDistBetween(obj1, obj2) << endl;
 }
 //Returns the fractional y component of any force acting between two objects
 //A positive value implies that obj2 is below obj1
 //A negative value implies that obj2 is above obj1
 double Simulation::yComponent(Object* obj1, Object* obj2) {
     return ((yDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
-    cout << "Y DISTANCE BETWEEN: " << yDistBetween(obj1, obj2) << endl;
 }
 //Returns the gravitational force between two objects, from the center
 double Simulation::gForce(Object* obj1, Object* obj2) {
     return((c_G * obj1->getMass() * obj2->getMass())/
            (pow(distBetween(obj1, obj2), 2))); 
-}
-//Returns the x component of the gravitational force acting between two objects
-//A positive value implies that obj2 is to the right of obj1
-//A negative value implies that obj2 is to the left of obj1
-double Simulation::gForceX(Object* obj1, Object* obj2) {
-    return (xComponent(obj1, obj2) * gForce(obj1, obj2));
-}
-//Returns the x component of the gravitational force acting between two objects
-//A positive value implies that obj2 is above obj1
-//A negative value implies that obj2 is below obj1
-double Simulation::gForceY(Object* obj1, Object* obj2) {
-    return (yComponent(obj1, obj2) * gForce(obj1, obj2));
 }
 //Returns the acceleration based on force and mass inputs
 double Simulation::accel(double force, double mass) {
@@ -223,8 +244,8 @@ void Simulation::deltaPos() {
     }
     
     //In order to increase the efficiency of this program, we attempt to
-    //eliminate any unnecessary recalculation of .  This is done by mapping
-    //the total forces to a square grid with length numObjects and recognizing
+    //eliminate any unnecessary force recalculations.  This is done by mapping
+    //the total forces to an array with length numObjects^2, and recognizing
     //that the after the total force from m to n is calculated, we can treat
     //the total force from n to m as the negative of the previously calculated
     //value.
@@ -233,42 +254,17 @@ void Simulation::deltaPos() {
         Object* obj1 = objects[i];
         double m1 = obj1->getMass();
         double* forces = new double[2 * numObjects];
-        cout << "FORCES ARRAY: ";
-        for (int h = 0; h < 4; ++h) {
-            //NOTE: THIS ONE LINE BELOW: WHY DO I HAVE TO DO THAT HERE? SHOULDN'T IT INITIALIZE TO ZERO? BUT IT DOESN'T.  REMOVING THIS LINE BREAKS THE CODE.  THIS IS WHAT MAKES ME THINK THE CALCULATIONS MAY BE FLAWED.
-            forces[h] = 0;
-            cout << forces[h] << ", ";
-        }
-        cout << endl;
         for (int j = 0; j < numObjects; ++j) {
             Object* obj2 = objects[j];
             if (obj1 != obj2) {
                 //If the relevant force has not already been calculated, do so
                 //(Repeats only occur when i > j)
                 if (i <= j) {
-                    //NOTE: This entire section is very unorganized and most
-                    //      importantly inefficient, with many unnecessary variable
-                    //      creations/assignments, as well as unnecessarily calling
-                    //      functions more times than needed.  When attempting to
-                    //      speed things up, it will be a huge priority to
-                    //      streamline this whole process.  The only reason I'm
-                    //      writing it like this to begin with is so that I can
-                    //      provide lots of console output for debugging.
+                    //MASSES, DISTANCES, AND LOCATIONS
                     double m2 = obj2->getMass();
-                    cout << "Calculations between objects[" << i << "] ";
-                    cout << "and objects[" << j << "]" << endl;
-                    cout << "++++++++++++++++++++++++++++++++" << endl;
-                    cout << "MASS OF OBJECT " << i << ": " << m1 << endl;
-                    cout << "MASS OF OBJECT " << j << ": " << m2 << endl;
                     double dBetween = distBetween(obj1, obj2);
-                    cout << "DISTANCE BETWEEN: " << dBetween << endl;
                     double xComp = xComponent(obj1, obj2);
                     double yComp = yComponent(obj1, obj2);
-                    cout << "X COMPONENT: " << xComp << endl;
-                    cout << "Y COMPONENT: " << yComp << endl;
-                    cout << "X DISTANCE BETWEEN: " << xDistBetween(obj1, obj2) << endl;
-                    cout << "Y DISTANCE BETWEEN: " << yDistBetween(obj1, obj2) << endl;
-                    
                     
                     //F O R C E S
                     //NOTE: Eventually, when there are multiple forces, I want to
@@ -278,19 +274,30 @@ void Simulation::deltaPos() {
                     //      double value at the end for use in accelerations.
                     //GRAVITY
                     double fG = gForce(obj1, obj2);
-                    double fGx = gForceX(obj1, obj2);
-                    double fGy = gForceY(obj1, obj2);
-                    cout << "FORCE DUE TO GRAVITY: " << fG << endl;
-                    cout << "X FORCE DUE TO GRAVITY: " << fGx << endl;
-                    cout << "Y FORCE DUE TO GRAVITY: " << fGy << endl;
-                    //TOTAL
-                    double fTx = fGx;
-                    double fTy = fGy;
-                    
+                    double fGx = xComp * fG;
+                    double fGy = yComp * fG;
+                    //TOTAL (CALCULATION)
+                    double fTx = fGx; // + other x forces, when added
+                    double fTy = fGy; // + other y forces, when added
+                    //TOTAL (SAVING)
                     forces[2 * j] = fTx;
                     forces[2* j + 1] = fTy;
-                    cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
-                    cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
+
+                    if (debugMode) {
+                        cout << "Calculations between objects[" << i << "] ";
+                        cout << "and objects[" << j << "]" << endl;
+                        cout << "++++++++++++++++++++++++++++++++" << endl;
+                        cout << "MASS OF OBJECT " << i << ": " << m1 << endl;
+                        cout << "MASS OF OBJECT " << j << ": " << m2 << endl;
+                        cout << "DISTANCE BETWEEN: " << dBetween << endl;
+                        cout << "X COMPONENT: " << xComp << endl;
+                        cout << "Y COMPONENT: " << yComp << endl;
+                        cout << "FORCE DUE TO GRAVITY: " << fG << endl;
+                        cout << "X FORCE DUE TO GRAVITY: " << fGx << endl;
+                        cout << "Y FORCE DUE TO GRAVITY: " << fGy << endl;
+                        cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
+                        cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
+                    }
                 }
                 else {
                     //I came up with these functions by hand.  It's much easier
@@ -298,31 +305,41 @@ void Simulation::deltaPos() {
                     //where the numerical position on the grid at any point is
                     //equal to (i * numObjects + j)
                     int n = numObjects;
-                    forces[2 * j] = -1 * forceGrid[2 * ((i * n + j) -
-                                                        ((n - 1) * ((i * n + j) %
-                                                                    (n + 1))))];
-                    forces[2 * j + 1] = -1 * forceGrid[2 * ((i * n + j) -
-                                                            ((n - 1) * ((i * n + j) %
-                                                                        (n + 1)))) + 1];
+                    forces[2 * j] = -1 * forceGrid[2 * (j * n + i)];
+                    forces[2 * j + 1] = -1 * forceGrid[2 * (j * n + i) + 1];
+                    
+                    if (debugMode) {
+                        cout << "Calculations between objects[" << i << "] ";
+                        cout << "and objects[" << j << "]" << endl;
+                        cout << "++++++++++++++++++++++++++++++++" << endl;
+                        cout << "Skipping calculations because objects[" << j;
+                        cout << "] to objects[" << i << "] was done." << endl;
+                        cout << "TOTAL X FORCE: " << forces[2 * j] << endl;
+                        cout << "TOTAL Y FORCE: " << forces[2 * j + 1] << endl;
+                    }
                 }
             }
             else {
-                cout << "No calculations necessary between object and itself." << endl;
                 forces[2 * j] = 0;
                 forces[2 * j + 1] = 0;
-                cout << "TOTAL X FORCE: " << 0 << endl;
-                cout << "TOTAL Y FORCE: " << 0 << endl;
+                
+                if (debugMode) {
+                    cout << "Calculations between objects[" << i << "] ";
+                    cout << "and objects[" << j << "]" << endl;
+                    cout << "No calculations needed from self to self." << endl;
+                    cout << "TOTAL X FORCE: " << 0 << endl;
+                    cout << "TOTAL Y FORCE: " << 0 << endl;
+                }
             }
-            cout << endl << endl;
         }
-        cout << "FORCES ARRAY: ";
-        for (int h = 0; h < 6; ++h) {
-            cout << forces[h] << ", ";
+        if (debugMode) {
+            cout << "FORCES ARRAY: ";
+            for (int j = 0; j < (2 * numObjects); ++j) {
+                cout << forces[j] << ", ";
+            }
         }
-        ////Populates forceGrid and determines total force
-        cout << endl;
-        cout << endl << "===ADDING FORCES TOGETHER===" << endl << endl;
-        
+        //Populates forceGrid and determines total force from an object to
+        //all other objects
         double totalX = 0;
         double totalY = 0;
         for (int j = 0; j < (numObjects); ++j) {
@@ -331,45 +348,48 @@ void Simulation::deltaPos() {
             totalX += forces[2 * j];
             totalY += forces[(2 * j) + 1];
         }
-        cout << "TOTAL TOTAL X FORCE: " << totalX << endl;
-        cout << "TOTAL TOTAL Y FORCE: " << totalY << endl << endl;
+        if (debugMode) {
+            cout << "TOTAL, TOTAL X FORCE: " << totalX << endl;
+            cout << "TOTAL, TOTAL Y FORCE: " << totalY << endl;
+        }
         
         //ACCELERATIONS
         double ax = totalX / m1;
         double ay = totalY / m1;
-        cout << "X ACCELERATION: " << ax << endl;
-        cout << "Y ACCELERATION: " << ay << endl;
         
         //V E L O C I T I E S
-        //INITIAL
-        cout << "INITIAL X VELOCITY: " << obj1->vxiGet() << endl;
-        cout << "INITIAL Y VELOCITY: " << obj1->vyiGet() << endl;
         //CHANGE
         double vxDelta = ax * timeInterval;
         double vyDelta = ay * timeInterval;
-        cout << "CHANGE IN X VELOCITY: " << vxDelta << endl;
-        cout << "CHANGE IN Y VELOCITY: " << vyDelta << endl;
         //FINAL
         obj1->vxfSet(obj1->vxiGet() + vxDelta);
         obj1->vyfSet(obj1->vyiGet() + vyDelta);
-        cout << "FINAL X VELOCITY: " << obj1->vxfGet() << endl;
-        cout << "FINAL Y VELOCITY: " << obj1->vyfGet() << endl;
         
         //P O S I T I O N S
-        //INITIAL
-        cout << "INITIAL X POSITION: " << obj1->xiGet() << endl;
-        cout << "INITIAL Y POSITION: " << obj1->yiGet() << endl;
         //CHANGE
         double xDelta = obj1->vxfGet() * timeInterval;
         double yDelta = obj1->vyfGet() * timeInterval;
-        cout << "CHANGE IN X POSITION: " << vxDelta << endl;
-        cout << "CHANGE IN Y POSITION: " << vyDelta << endl;
         //FINAL
         obj1->xfSet(obj1->xiGet() + xDelta);
         obj1->yfSet(obj1->yiGet() + yDelta);
-        cout << "FINAL X POSITION: " << obj1->xfGet() << endl;
-        cout << "FINAL Y POSITION: " << obj1->yfGet() << endl;
-        cout << endl;
+        
+        if (debugMode) {
+            cout << "X ACCELERATION: " << ax << endl;
+            cout << "Y ACCELERATION: " << ay << endl;
+            cout << "INITIAL X VELOCITY: " << obj1->vxiGet() << endl;
+            cout << "INITIAL Y VELOCITY: " << obj1->vyiGet() << endl;
+            cout << "CHANGE IN X VELOCITY: " << vxDelta << endl;
+            cout << "CHANGE IN Y VELOCITY: " << vyDelta << endl;
+            cout << "FINAL X VELOCITY: " << obj1->vxfGet() << endl;
+            cout << "FINAL Y VELOCITY: " << obj1->vyfGet() << endl;
+            cout << "INITIAL X POSITION: " << obj1->xiGet() << endl;
+            cout << "INITIAL Y POSITION: " << obj1->yiGet() << endl;
+            cout << "CHANGE IN X POSITION: " << vxDelta << endl;
+            cout << "CHANGE IN Y POSITION: " << vyDelta << endl;
+            cout << "FINAL X POSITION: " << obj1->xfGet() << endl;
+            cout << "FINAL Y POSITION: " << obj1->yfGet() << endl;
+            cout << endl;
+        }
         
         //deletes forces array
         delete[] forces;
@@ -411,16 +431,6 @@ void Simulation::deltaPos() {
         cout << exception << endl;
         exit(1);
     }
-
-    //NOTE: Things like forces should be calculated between the object and every
-    //      other object but itself.  Do this by iterating through the objects
-    //      array and calculating for all pointers where the object pointer at
-    //      the current index is not equal to obj (because that signifies that
-    //      the object pointer at the current index IS obj
-    //NOTE: I believe I have now taken this into account, but the problem is
-    //      that some info is unnecessarily re-calculated, for example, the
-    //      force of object 2 on object 1 is the same as the other way around.
-    //      I'll need to think of a smart way to handle this.
 }
 
 //CLASS: Color
@@ -540,71 +550,27 @@ Object::Object() :
                width(1),
                height(1),
                ptrData(new int[7]),
-               dataFull(false) {}
-
-//Constructor for object with only position specified
-Object::Object(int xPos_, int yPos_) : 
-               xPos(xPos_),
-               yPos(yPos_),
-               ptrColor(new Color()),
-               width(1),
-               height(1),
-               ptrData(new int[7]),
-               dataFull(false) {}
-
-//Constructor for object with only position and color specified
-Object::Object(int xPos_, int yPos_, Color* ptrColor_) :
-               xPos(xPos_),
-               yPos(yPos_),
-               ptrColor(new Color(*ptrColor_)),
-               width(1),
-               height(1),
-               ptrData(new int[7]),
-               dataFull(false) {}
-               
-//Constructor for object with only color, width and height specified
-Object::Object(Color* ptrColor_, int width_, int height_) : 
-               xPos(0),
-               yPos(0),
-               ptrColor(new Color(*ptrColor_)),
-               width(width_),
-               height(height_),
-               ptrData(new int[(3 * width_ * height_) + 4]),
-               dataFull(false) {}
-
-//Constructor for object with only color specified
-Object::Object(Color* ptrColor_) :
-               xPos(0),
-               yPos(0),
-               ptrColor(new Color(*ptrColor_)),
-               width(1),
-               height(1),
-               ptrData(new int[7]),
-               dataFull(false) {}
-
-//Constructor for object with position, width, and height specified
-Object::Object(int xPos_, int yPos_, int width_, int height_) :
-               xPos(xPos_),
-               yPos(yPos_),
-               ptrColor(new Color()),
-               width(width_),
-               height(height_),
-               ptrData(new int[(3 * width * height) + 4]),
-               dataFull(false) {}
+               dataFull(false), 
+               density(1000) {}
 
 //Constructor for object with position, width, height, and color specified
-Object::Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_) :
+Object::Object(int xPos_,
+               int yPos_,
+               Color* ptrColor_,
+               int width_,
+               int height_,
+               double density_) :
                xPos(xPos_),
                yPos(yPos_),
                ptrColor(new Color(*ptrColor_)),
                width(width_),
                height(height_),
                ptrData(new int[(3 * width_ * height_) + 4]),
-               dataFull(false) {}
+               dataFull(false),
+               density(density_) {}
 
 //Destructor for Object
 Object::~Object(){
-    //cout << "Object dtor" << endl;
     delete ptrColor;
     delete[] ptrData;
 }
@@ -634,18 +600,13 @@ Object::Object(const Object &other) {
 }
 
 //FUNCTIONS USED IN CALCULATION
-//Function to define the constants used in calculation (Default values)
-void Object::setConstants() {
+//Function to define the constants used in calculation to their default values
+void Object::setDefaultConstants() {
     //Density, in (kg)/(m^3)
     //NOTE: Based on my calculations, this will vary extremely with the scale of
     //      the objects being displayed.  So for a planet sized object it should
     //      be maybe something around 1*10^6.  Not sure about other scales.
     density = 1000;
-}
-//Function to define the constants used in calculation (Input values)
-void Object::setConstants(double density_) {
-    //See default setConstants() for more information about values
-    density = density_;
 }
 
 //Get function for ptrColor
@@ -727,11 +688,7 @@ double Object::getMass() {
 }
 //Set function for mass (calculated based on density and area)
 void Object::setMass(double sizeOfPixel) {
-    //cout << "width = " << width << endl;
-    //cout << "height = " << height << endl;
-    //cout << "density = " << density << endl;
     mass = (double(width * height) * pow(sizeOfPixel, 2) * density);
-    //cout << "mass = " << mass << endl;
 }
 
 //Get function for density
@@ -750,7 +707,6 @@ double Object::xcGet() {
 //Set function for xc (calculated based on width and xi)
 void Object::xcSet(double sizeOfPixel) {
     xc = xi + ((double(width) / 2) * sizeOfPixel);
-    cout << "set xc to " << xc << endl;
 }
 
 //Get function for yc
@@ -760,7 +716,6 @@ double Object::ycGet() {
 //Set function for yc (calculated based on height and yi)
 void Object::ycSet(double sizeOfPixel) {
     yc = yi + ((double(height) / 2) * sizeOfPixel);
-    cout << "set yc to " << yc << endl;
 }
 
 //Get function for xi
@@ -770,7 +725,6 @@ double Object::xiGet() {
 //Set function for xi
 void Object::xiSet(double xi_) {
     xi = xi_;
-    //cout << "set xi to " << xi << endl;
 }
 
 //Get function for yi
@@ -780,7 +734,6 @@ double Object::yiGet() {
 //Set function for yi
 void Object::yiSet(double yi_) {
     yi = yi_;
-    //cout << "set yi to " << yi << endl;
 }
 
 //Get function for xf
@@ -848,6 +801,10 @@ Simulation* inCsv(string filename) {
     double pixelSize;
     string row;
     string col;
+    double timeInterval;
+    int numIterations;
+    string debugString;
+    bool debug;
     
     //File input for x and y dimensions of window as well as number of objects
     try {
@@ -894,7 +851,7 @@ Simulation* inCsv(string filename) {
                     throw e;
                 }
             }
-            //Checks 
+            //Checks pixelSize
             if (!(getline(ss, col, ','))) {
                 string e = "Input file not properly formatted: pixelSize (0, 3)";
                 throw e;
@@ -906,23 +863,77 @@ Simulation* inCsv(string filename) {
                     throw e;
                 }
             }
+            //Checks timeInterval
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: timeInterval (0, 4)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> timeInterval)) {
+                    string e = "timeInterval value not properly formatted: (0, 4)";
+                    throw e;
+                }
+            }
+            //Checks numIterations
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: numIterations (0, 5)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> numIterations)) {
+                    string e = "numIterations value not properly formatted: (0, 5)";
+                    throw e;
+                }
+            }
+            //Checks debugString
+            if (!(getline(ss, col, ','))) {
+                string e = "Input file not properly formatted: debugString (0, 6)";
+                throw e;
+            }
+            else {
+                istringstream stoi(col);
+                if (!(stoi >> debugString)) {
+                    string e = "debugString value not properly formatted: (0, 6)";
+                    throw e;
+                }
+                else {
+                    if (lowercase(debugString) == "true" ||
+                        lowercase(debugString) == "debug" ||
+                        lowercase(debugString) == "y") {
+                        debug = true;
+                    }
+                    else if (lowercase(debugString) == "false" ||
+                             lowercase(debugString) == "nodebug" ||
+                             lowercase(debugString) == "n") {
+                        debug = false;
+                    }
+                    else {
+                        string e = "debugString value not recodnized: ";
+                        e += debugString;
+                        throw e;
+                    }
+                }
+            }
         }
     }
     catch (string exception) {
         cout << exception << endl;
         exit(1);
     }
-    cout << "xRes: " << xRes << endl;
-    cout << "yRes: " << yRes << endl;
-    cout << "numObjects: " << numObjects << endl;
-    cout << "================================" << endl;
+    if (debug) {
+        cout << "xRes: " << xRes << endl;
+        cout << "yRes: " << yRes << endl;
+        cout << "numObjects: " << numObjects << endl;
+        cout << "pixelSize: " << pixelSize << endl;
+        cout << "timeInterval: " << timeInterval << endl;
+        cout << "debugString: " << debugString << endl;
+        cout << "================================" << endl;
+    }
     
-    //NOTE: This also means that I should maybe bring density back to being a
-    //      member of simulation instead of object.  I'm not quite sure yet
-    
-    //NOTE: these should be [numObjects]
-    Color* tempColors[3];
-    Object* tempObjects[3];
+    Color** tempColors = new Color*[numObjects];
+    Object** tempObjects = new Object*[numObjects];
     //File input for widths, heights, colors, and positions of objects
     for (int i = 0; i < numObjects; ++i) {
         int width;
@@ -932,6 +943,7 @@ Simulation* inCsv(string filename) {
         int b;
         int x;
         int y;
+        double density;
         try {
             //Ensures row is present
             ostringstream estream;
@@ -1060,7 +1072,24 @@ Simulation* inCsv(string filename) {
                         e += ", 6)";
                         throw estream.str();
                     }
-                }  
+                }
+                //Checks density
+                if (!(getline(ss, col, ','))) {
+                    string e = "Input file not properly formatted: density (";
+                    estream << e << i;
+                    e += ", 7)";
+                    throw estream.str();
+                }
+                else{
+                    istringstream stoi(col);
+                    if (!(stoi >> density)) {
+                        cout << col << endl;
+                        string e = "density value not properly formatted: (";
+                        estream << e << i;
+                        e += ", 7)";
+                        throw estream.str();
+                    }
+                }
             }
         }
         catch (string exception) {
@@ -1068,45 +1097,48 @@ Simulation* inCsv(string filename) {
             exit(1);
         }
         tempColors[i] = new Color(r, g, b);
-        tempObjects[i] = new Object(x, y, tempColors[i], width, height);
+        tempObjects[i] = new Object(x, y, tempColors[i], width, height, density);
         tempObjects[i]->buildData();
         //Sets object values for constants, such as density.  If there is
         //density input, this should take in arguments
-        tempObjects[i]->setConstants();
+        //tempObjects[i]->setDefaultConstants();
         //Sets initial values for mass, velocity, and position
         tempObjects[i]->setMass(pixelSize);
         tempObjects[i]->xiSet(x * pixelSize);
         tempObjects[i]->yiSet(y * pixelSize);
         tempObjects[i]->vxiSet(0);
         tempObjects[i]->vyiSet(0);
-        cout << "Built data for object " << i << endl;
-        cout << "OBJECT: " << i << endl;
-        cout << "witdh: " << width << endl;
-        cout << "height: " << height << endl;
-        cout << "mass: " << tempObjects[i]->getMass() << endl;
-        cout << "r: " << r << endl;
-        cout << "g: " << g << endl;
-        cout << "b: " << b << endl;
-        cout << "x: " << x << endl;
-        cout << "y: " << y << endl;
-        cout << "================================" << endl;
+        
+        if (debug) {
+            cout << "Built data for object " << i << endl;
+            cout << "OBJECT: " << i << endl;
+            cout << "witdh: " << width << endl;
+            cout << "height: " << height << endl;
+            cout << "mass: " << tempObjects[i]->getMass() << endl;
+            cout << "r: " << r << endl;
+            cout << "g: " << g << endl;
+            cout << "b: " << b << endl;
+            cout << "x: " << x << endl;
+            cout << "y: " << y << endl;
+            cout << "================================" << endl;
+        }
     }
     inputFile.close();
     Simulation* simulation = new Simulation(xRes,
                                             yRes,
                                             numObjects,
                                             tempColors,
-                                            tempObjects);
+                                            tempObjects,
+                                            pixelSize,
+                                            timeInterval,
+                                            numIterations,
+                                            debug);
     simulation->setInFilename(filename);
-    /*
+    
     //Attempting to fix memory leaks for this function
-    for (int i = 0; i < numObjects; ++i) {
-        delete tempColors[i];
-        tempColors[i] = 0;
-        delete tempObjects[i];
-        tempObjects[i] = 0;
-    }
-    */
+    delete[] tempColors;
+    delete[] tempObjects;
+    
     return simulation;
 }
 
@@ -1155,7 +1187,7 @@ void outCsv(Simulation* theSim) {
 int main(int argc, char* argv[]) {
     //NOTE: Add in a system so that numFrames can be generated from input file.
     //      also timeInterval. These should be high priority because very easy.
-    int numFrames = 1;
+    bool debug = false;
     string outFilename;
     string inFilename;
     if (argc == 3) {
@@ -1177,7 +1209,7 @@ int main(int argc, char* argv[]) {
     outCsv(sim);
     
     //Runs numFrames iterations of the simulation
-    for (int i = 0; i < numFrames; ++i) {
+    for (int i = 0; i < sim->getNumIterations(); ++i) {
         sim->deltaPos();
     }
     

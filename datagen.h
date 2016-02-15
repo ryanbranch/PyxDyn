@@ -37,19 +37,14 @@ class Object {
     public:
         //Default constructor for Object
         Object();
-        //Constructor for object with only position specified
-        Object(int xPos_, int yPos_);
-        //Constructor for object with only position and color specified
-        Object(int xPos_, int yPos_, Color* ptrColor_);
-        //Constructor for object with only color, width and height specified
-        Object(Color* ptrColor_, int width_, int height_);
-        //Constructor for object with only color specified
-        Object(Color* ptrColor_);
-        //Constructor for object with position, width, and height specified
-        Object(int xPos_, int yPos_, int width_, int height_);
-        //Constructor for object with position, width, height, and color
-        //specified
-        Object(int xPos_, int yPos_, Color* ptrColor_, int width_, int height_);
+        //Constructor for object with position, width, height, color, and
+        //density specified
+        Object(int xPos_,
+               int yPos_,
+               Color* ptrColor_,
+               int width_,
+               int height_,
+               double density_);
         //Destructor for Object
         ~Object();
         //Assignment operator for Object
@@ -59,10 +54,8 @@ class Object {
         
         //FUNCTIONS USED IN CALCULATION
         //Function to define the constants used in calculation (Default values)
-        void setConstants();
-        //Function to define the constants used in calculation (Input values)
-        void setConstants(double density_);
-        
+        void setDefaultConstants();
+
         //SET AND GET FUNCTIONS FOR DISPLAY PROPERTIES
         //Get function for ptrColor
         Color* getPtrColor();
@@ -171,7 +164,11 @@ class Simulation {
                    int yRes_,
                    int numObjects_, 
                    Color** colors_,
-                   Object** objects_);
+                   Object** objects_,
+                   double pixelSize_,
+                   double timeInterval,
+                   int numIterations,
+                   bool debugMode_);
         //Destructor for Simulation
         ~Simulation();
         //FUNCTIONS USED IN CALCULATION
@@ -199,6 +196,22 @@ class Simulation {
         string getOutFilename();
         //Set function for outFilename
         void setOutFilename(string name);
+        //Get function for debugMode
+        bool getDebugMode();
+        //Set function for debugMode
+        void setDebugMode(bool mode);
+        //Get function for pixelSize
+        double getPixelSize();
+        //Set function for pixelSize
+        void setPixelSize(int size);
+        //Get function for timeInterval
+        double getTimeInterval();
+        //Set function for timeInterval
+        void setTimeInterval(int time);
+        //Get function for numIterations
+        int getNumIterations();
+        //Set function for numIterations
+        void setNumIterations(int num);
         
         //Functions used in calculation
         //Initializes the xi and yi positions of all objects
@@ -215,10 +228,6 @@ class Simulation {
         double yComponent(Object* obj1, Object* obj2);
         //Returns the gravitational force between two objects, from the center
         double gForce(Object* obj1, Object* obj2);
-        //Returns the x component of the gravitational force acting between two objects
-        double gForceX(Object* obj1, Object* obj2);
-        //Returns the x component of the gravitational force acting between two objects
-        double gForceY(Object* obj1, Object* obj2);
         //Returns the acceleration based on force and mass inputs
         double accel(double force, double mass);
         //Returns the change in velocity on time interval based on acceleration
@@ -243,6 +252,8 @@ class Simulation {
         Object** objects;
         string outFilename;
         string inFilename;
+        int numIterations;
+        bool debugMode;
         
         //Constants useful for calculations
         //G - Gravitational constant in (N * m^2)/(kg)

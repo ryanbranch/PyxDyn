@@ -38,7 +38,7 @@ class Room:
         self.backgroundColor = (255, 255, 255)
         self.transparentColor = (255, 254, 253)
         self.roomWidth = 1024
-        self.roomHeight = 1024
+        self.roomHeight = 768
         self.fileName = "input.csv"
         self.folderName = "input_csv"
         self.objects = []
