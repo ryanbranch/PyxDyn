@@ -8,7 +8,7 @@ using namespace std;
 //FUNCTIONS NOT BELONGING TO ANY CLASS
 
 //Function to take in .csv data
-Simulation* inCsv(string filename);
+Simulation* inCsv(string filename, bool debug);
 //Function to write csv output data
 void outCsv(Simulation* theSim);
 

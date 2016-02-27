@@ -16,7 +16,7 @@ using namespace std;
 //FUNCTIONS NOT BELONGING TO ANY CLASS
 
 //Function to take in .csv data
-Simulation* inCsv(string filename) {
+Simulation* inCsv(string filename, bool debug) {
     ifstream inputFile(filename.c_str());
     int xRes;
     int yRes;
@@ -26,8 +26,6 @@ Simulation* inCsv(string filename) {
     string col;
     double timeInterval;
     int numIterations;
-    string debugString;
-    bool debug;
     
     //File input for x and y dimensions of window as well as number of objects
     try {
@@ -110,37 +108,9 @@ Simulation* inCsv(string filename) {
                     throw e;
                 }
             }
-            //Checks debugString
-            if (!(getline(ss, col, ','))) {
-                string e = "Input file not properly formatted: debugString (0, 6)";
-                throw e;
-            }
-            else {
-                istringstream stoi(col);
-                if (!(stoi >> debugString)) {
-                    string e = "debugString value not properly formatted: (0, 6)";
-                    throw e;
-                }
-                else {
-                    if (lowercase(debugString) == "true" ||
-                        lowercase(debugString) == "debug" ||
-                        lowercase(debugString) == "y") {
-                        debug = true;
-                    }
-                    else if (lowercase(debugString) == "false" ||
-                             lowercase(debugString) == "nodebug" ||
-                             lowercase(debugString) == "n") {
-                        debug = false;
-                    }
-                    else {
-                        string e = "debugString value not recodnized: ";
-                        e += debugString;
-                        throw e;
-                    }
-                }
-            }
         }
     }
+    
     catch (string exception) {
         cout << exception << endl;
         exit(1);
@@ -151,7 +121,7 @@ Simulation* inCsv(string filename) {
         cout << "numObjects: " << numObjects << endl;
         cout << "pixelSize: " << pixelSize << endl;
         cout << "timeInterval: " << timeInterval << endl;
-        cout << "debugString: " << debugString << endl;
+        cout << "debug: " << debug << endl;
         cout << "================================" << endl;
     }
     
@@ -410,19 +380,52 @@ void outCsv(Simulation* theSim) {
 int main(int argc, char* argv[]) {
     //NOTE: Add in a system so that numFrames can be generated from input file.
     //      also timeInterval. These should be high priority because very easy.
-    bool debug = false;
+    bool debugIt;
+    string debugString;
     string outFilename;
     string inFilename;
+    
+    
+    //If there are 3 inputs, we assume the extra 2 are filenames
     if (argc == 3) {
         inFilename = argv[1];
         outFilename = argv[2];
+        debugIt = false;
     }
+    //With another, we assume this is specifying debug mode.
+    else if (argc == 4) {
+        inFilename = argv[1];
+        outFilename = argv[2];
+        try {
+            if (lowercase(debugString) == "true" ||
+                lowercase(debugString) == "debug" ||
+                lowercase(debugString) == "y") {
+                debugIt = true;
+            }
+            else if (lowercase(debugString) == "false" ||
+                     lowercase(debugString) == "nodebug" ||
+                     lowercase(debugString) == "n") {
+                debugIt = false;
+            }
+            else {
+                string e = "debugString value not recognized: ";
+                e += debugString;
+                throw e;
+            }
+        }
+        catch (string exception) {
+        cout << exception << endl;
+        exit(1);
+        }
+    }
+    
     else {
         inFilename = "datagen.csv";
         outFilename = "input.csv";
+        debugIt = false;
     }
     //Gets input data and stores it as a pointer to simulation
-    Simulation* sim = inCsv(inFilename);
+    Simulation* sim = inCsv(inFilename, debugIt);
     sim->setOutFilename(outFilename);
     sim->setConstants();
     
