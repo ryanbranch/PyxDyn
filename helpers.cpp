@@ -1,3 +1,6 @@
+#ifndef HELPERS_CPP
+#define HELPERS_CPP
+
 #include <iostream>
 
 using namespace std;
@@ -10,3 +13,5 @@ string lowercase(string word) {
     }
     return wordOut;
 }
+
+#endif //HELPERS_CPP
