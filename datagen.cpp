@@ -290,7 +290,7 @@ Simulation* inCsv(string filename, bool debug) {
             exit(1);
         }
         tempColors[i] = new Color(r, g, b);
-        tempObjects[i] = new Object(x, y, tempColors[i], width, height, density);
+        tempObjects[i] = new Object(x, y, tempColors[i], width, height, density, i);
         tempObjects[i]->buildData();
         //Sets object values for constants, such as density.  If there is
         //density input, this should take in arguments

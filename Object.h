@@ -17,7 +17,8 @@ class Object {
                Color* ptrColor_,
                int width_,
                int height_,
-               double density_);
+               double density_,
+               int id_);
         //Destructor for Object
         ~Object();
         //Assignment operator for Object
@@ -46,19 +47,42 @@ class Object {
         int getNumElts();
         //Returns the element of dataPtr at the specified index
         int getElt(int index);
+        //Returns the last object with which the object collided;
+        int getLastCollided();
+        //Sets the last object with which the object collided();
+        void setLastCollided(int lastCollided_);
+        //Gets the object id
+        int getObjectID();
+        //Sets the object id
+        int setObjectID(int id_);
         //Function to build the data array
         void buildData();
         
         //SET AND GET FUNCTIONS FOR PHYSICAL PROPERTIES
+        
+        //WIDTH/HEIGHT
+        //Get function for width
+        double getWidth();
+        //Set function for width
+        void setWidth(double width_);
+        //Get function for height
+        double getHeight();
+        //Set function for height
+        void setHeight(double height_);
+        
+        //MASS
         //Get function for mass
         double getMass();
         //Set function for mass (calculated based on density and area)
         void setMass(double sizeOfPixel);
+        
         //DENSITY
         //Get function for density
         double getDensity();
         //Set function for density
         void setDensity(double density_);
+        
+        //POSITION
         //Get function for xc
         double xcGet();
         //Set function for xc (calculated based on width and xi)
@@ -83,6 +107,8 @@ class Object {
         double yfGet();
         //Set function for yf
         void yfSet(double yf_);
+        
+        //VELOCITY
         //Get function for vxi
         double vxiGet();
         //Set function for vxi
@@ -100,7 +126,19 @@ class Object {
         //Set function for vyf
         void vyfSet(double vyf_);
         
+        //MOMENTUM
+        //Get function for px
+        //double pxGet();
+        //Set function for px
+        //void pxSet(double px_);
+        //Get function for py
+        //double pyGet();
+        //Set function for py
+        //void pySet(double py_);
+        
     private:
+        int lastCollided;
+        int id;
         //DISPLAY PROPERTIES
         int xPos;
         int yPos;
@@ -126,6 +164,9 @@ class Object {
         double vyi;
         double vxf;
         double vyf;
+        //x and y momentums, in (kg*m)/s
+        //double px;
+        //double py;
 };
 
 //DEFINITIONS:
@@ -139,7 +180,10 @@ Object::Object() :
                height(1),
                ptrData(new int[7]),
                dataFull(false), 
-               density(1000) {}
+               density(1000),
+               id(-1) {
+        lastCollided = -1;
+    }
 
 //Constructor for object with position, width, height, and color specified
 Object::Object(int xPos_,
@@ -147,7 +191,8 @@ Object::Object(int xPos_,
                Color* ptrColor_,
                int width_,
                int height_,
-               double density_) :
+               double density_,
+               int id_) :
                xPos(xPos_),
                yPos(yPos_),
                ptrColor(new Color(*ptrColor_)),
@@ -155,7 +200,10 @@ Object::Object(int xPos_,
                height(height_),
                ptrData(new int[(3 * width_ * height_) + 4]),
                dataFull(false),
-               density(density_) {}
+               density(density_), 
+               id(id_)  {
+        lastCollided = -1;
+    }
 
 //Destructor for Object
 Object::~Object(){
@@ -250,6 +298,24 @@ int Object::getElt(int index) {
     return elt;
 }
 
+//Returns the last object with which the object collided;
+int Object::getLastCollided(){
+    return lastCollided;
+}
+//Sets the last object with which the object collided();
+void Object::setLastCollided(int lastCollided_) {
+    lastCollided = lastCollided_;
+}
+
+//Gets the object id
+int Object::getObjectID() {
+    return id;
+}
+//Sets the object id
+int Object::setObjectID(int id_) {
+    id = id_;
+}
+
 //Function to build the data array
 void Object::buildData() {
     int r = ptrColor->getRed();
@@ -270,6 +336,33 @@ void Object::buildData() {
 }
 
 //SET AND GET FUNCTIONS FOR OBJECT PHYSICAL PROPERTIES
+
+
+
+//WIDTH/HEIGHT
+
+//Get function for width
+double Object::getWidth() {
+    return width;
+}
+//Set function for width
+void Object::setWidth(double width_) {
+    width = width_;
+}
+
+//Get function for height
+double Object::getHeight() {
+    return height;
+}
+//Set function for height
+void Object::setHeight(double height_) {
+    height = height_;
+}
+
+
+
+//MASS
+
 //Get function for mass
 double Object::getMass() {
     return mass;
@@ -279,6 +372,10 @@ void Object::setMass(double sizeOfPixel) {
     mass = (double(width * height) * pow(sizeOfPixel, 2) * density);
 }
 
+
+
+//DENSITY
+
 //Get function for density
 double Object::getDensity() {
     return density;
@@ -287,6 +384,10 @@ double Object::getDensity() {
 void Object::setDensity(double density_) {
     density = density_;
 }
+
+
+
+//POSITION
 
 //Get function for xc
 double Object::xcGet() {
@@ -342,6 +443,10 @@ void Object::yfSet(double yf_) {
     yf = yf_;
 }
 
+
+
+//VELOCITY
+
 //Get function for vxi
 double Object::vxiGet() {
     return vxi;
@@ -377,5 +482,27 @@ double Object::vyfGet() {
 void Object::vyfSet(double vyf_) {
     vyf = vyf_;
 }
+
+
+
+//MOMENTUM
+
+//Get function for px
+//double Object::pxGet() {
+//    return px;
+//}
+//Set function for px
+//void Object::pxSet(double px_) {
+//    px = px_;
+//}
+
+//Get function for py
+//double Object::pyGet() {
+//    return py;
+//}
+//Set function for py
+//void Object::pySet(double py_) {
+//    py = py_;
+//}
 
 #endif //OBJECT_H

@@ -68,6 +68,12 @@ class Simulation {
         //Functions used in calculation
         //Initializes the xi and yi positions of all objects
         void iPosInit();
+        
+        //Returns the furthest distance at which 2 objects could possibly collide
+        double collisionDistance(Object* obj1, Object* obj2);
+        //Checks whether a collision is ocurring between two objects
+        bool checkCollision(Object* obj1, Object* obj2);
+        
         //Returns the x-coordinate distance between two objects measured from the center
         double xDistBetween(Object* obj1, Object* obj2);
         //Returns the y-coordinate distance between two objects measured from the center
@@ -78,6 +84,7 @@ class Simulation {
         double xComponent(Object* obj1, Object* obj2);
         //Returns the fractional y component of any force acting between two objects
         double yComponent(Object* obj1, Object* obj2);
+        
         //Returns the gravitational force between two objects, from the center
         double gForce(Object* obj1, Object* obj2);
         //Returns the acceleration based on force and mass inputs
@@ -106,6 +113,8 @@ class Simulation {
         string inFilename;
         int numIterations;
         bool debugMode;
+        int collidedNum;
+        int collidedRef;
         
         //Constants useful for calculations
         //G - Gravitational constant in (N * m^2)/(kg)
@@ -140,7 +149,9 @@ Simulation::Simulation(int xRes_,
                        pixelSize(pixelSize_),
                        timeInterval(timeInterval_),
                        numIterations(numIterations_),
-                       debugMode(debugMode_) {
+                       debugMode(debugMode_),
+                       collidedNum(0),
+                       collidedRef(0) {
     for (int i = 0; i < numObjects_; ++i) {
         colors[i] = colors_[i];
         objects[i] = objects_[i];
@@ -273,6 +284,65 @@ void Simulation::iPosInit() {
     }
 }
 
+//Returns the furthest distance at which 2 objects could possibly collide
+double Simulation::collisionDistance(Object* obj1, Object* obj2) {
+    return sqrt(pow((obj1->getHeight() + obj2->getHeight()), 2) +
+                pow((obj1->getWidth() + obj2->getWidth()), 2));
+}
+
+bool Simulation::checkCollision(Object* obj1, Object* obj2) {
+    bool collides = false;
+    
+    //If statements are structured in this way so that collision directionality
+    //can be known and examined for potential future debugging purposes.
+    
+    double distX = xDistBetween(obj1, obj2);
+    double distY = yDistBetween(obj1, obj2);
+    double distW = (((obj1->getWidth() + obj2->getWidth()) / 2) * pixelSize);
+    double distH = (((obj1->getHeight() + obj2->getHeight()) / 2) * pixelSize);
+    
+    
+    //cout << "distX: " << distX << endl;
+    //cout << "distW: " << distW << endl;
+    //cout << "distY: " << distY << endl;
+    //cout << "distH: " << distH << endl;
+    //cout << ((distX <= distW) && (distY <= distH)) << endl;
+    
+    //Object 1 right is to the right of Object 2 left AND dist is low enough
+    //(Also handles if they are exactly aligned)
+    if (((obj1->xiGet() + (obj1->getWidth() * pixelSize)) >= (obj2->xiGet())) &&
+        ((distX < distW) && (distY <= distH))){
+        //cout << "obj1 RIGHT to the right of obj2 LEFT" << endl;
+        collides = true;
+    }
+    //Object 1 left is to the left of Object 2 right AND dist is low enough
+    else if (((obj1->xiGet()) < (obj2->xiGet() + (obj2->getWidth() * pixelSize))) && 
+             ((distX < distW) && (distY <= distH))){
+        //cout << "obj1 LEFT to the left of obj2 RIGHT" << endl;
+        collides = true;
+    }
+    //Object 1 bottom is below Object 2 top AND dist is low enough
+    //(Also handles if they are exactly aligned)
+    else if (((obj1->yiGet() + (obj1->getHeight() * pixelSize)) >= (obj2->yiGet())) &&
+             ((distX < distW) && (distY <= distH))){
+        //cout << "obj1 BOTTOM below obj2 TOP" << endl;
+        collides = true;
+    }
+    //Object 1 top is above Object 2 bottom AND dist is low enough
+    else if (((obj1->yiGet()) < (obj2->yiGet() + (obj2->getHeight() * pixelSize))) && 
+             ((distX < distW) && (distY <= distH))){
+        //cout << "obj1 TOP above obj2 BOTTOM" << endl;
+        collides = true;
+    }
+    
+    if (collides) {
+        obj1->setLastCollided(obj2->getObjectID());
+        obj2->setLastCollided(obj1->getObjectID());
+    }
+    
+    return collides;
+}
+
 //Returns the x-coordinate distance between two objects measured from the center
 //A positive value implies that obj2 is to the right of obj1
 //A negative value implies that obj2 is to the left of obj1
@@ -302,6 +372,7 @@ double Simulation::xComponent(Object* obj1, Object* obj2) {
 double Simulation::yComponent(Object* obj1, Object* obj2) {
     return ((yDistBetween(obj1, obj2)) / (distBetween(obj1, obj2)));
 }
+
 //Returns the gravitational force between two objects, from the center
 double Simulation::gForce(Object* obj1, Object* obj2) {
     return((c_G * obj1->getMass() * obj2->getMass())/
@@ -356,6 +427,7 @@ void Simulation::deltaPos() {
     //that the after the total force from m to n is calculated, we can treat
     //the total force from n to m as the negative of the previously calculated
     //value.
+    //Calculates and applies the forces between all objects
     double* forceGrid = new double[2 * numObjects * numObjects];
     for (int i = 0; i < numObjects; ++i) {
         Object* obj1 = objects[i];
@@ -502,7 +574,74 @@ void Simulation::deltaPos() {
         delete[] forces;
     }
     //deletes forceGrid array
-    //delete[] forceGrid;
+    //delete[] forceGrid;    
+    
+    //Calculates and applies any changes in velocity due to collision
+    for (int i = 0; i < numObjects; ++i) {
+        Object* obj1 = objects[i];
+        double m1 = obj1->getMass();
+        for (int j = 0; j < numObjects; ++j) {
+            Object* obj2 = objects[j];
+            //Since we only need to calculate collisions between any given pair
+            //of objects once and not twice, and can ignore equality since self
+            //collision isn't a thing, we examine all cases where i < j.
+            //We only have to test if collidedNum is equal to collidedRef.
+            //We also only need to test if the two objects' last collisions were with eachother
+            if ((i < j) &&
+               (((obj1->getLastCollided() != 
+                 obj2->getObjectID()) ||
+                 (obj1->getObjectID() != 
+                 obj2->getLastCollided())) ||
+                ((obj1->getLastCollided() == -1) || 
+                  (obj2->getLastCollided() == -1)))) {
+                                 
+                                 
+                //cout << obj1->getLastCollided() << "    " << obj2->getLastCollided() << endl;
+                
+                
+                //MASSES, DISTANCES, AND LOCATIONS
+                double m2 = obj2->getMass();
+                double dBetween = distBetween(obj1, obj2);
+                //if ((dBetween < collisionDistance(obj1, obj2)) && checkCollision(obj1, obj2)) {
+                if (checkCollision(obj1, obj2)) {
+                    //Updates initial velocity variables
+                    obj1->vxiSet(obj1->vxfGet());
+                    obj1->vyiSet(obj1->vyfGet());                    
+                    
+                    //Computes new velocities, elastically
+                    obj1->vxfSet((((m1 - m2) / (m1 + m2)) * obj1->vxiGet()) +
+                                 (((2 * m2) / (m1 + m2)) * obj2->vxiGet()));
+                    obj2->vxfSet((((2 * m1) / (m1 + m2)) * obj1->vxiGet()) -
+                                 (((m1 - m2) / (m1 + m2)) * obj2->vxiGet()));
+                    obj1->vyfSet((((m1 - m2) / (m1 + m2)) * obj1->vyiGet()) +
+                                 (((2 * m2) / (m1 + m2)) * obj2->vyiGet()));
+                    obj2->vyfSet((((2 * m1) / (m1 + m2)) * obj1->vyiGet()) -
+                                 (((m1 - m2) / (m1 + m2)) * obj2->vyiGet()));
+                                 
+                    //cout << "COLLISION between objects[" << i << "] ";
+                    //cout << "and objects[" << j << "]" << endl;
+                                 
+                if (debugMode) {
+                        cout << "COLLISION between objects[" << i << "] ";
+                        cout << "and objects[" << j << "]" << endl;
+                        cout << "++++++++++++++++++++++++++++++++" << endl;
+                        cout << "For objects[" << i << "]:" << endl;
+                        cout << "INITIAL X VELOCITY: " << obj1->vxiGet() << endl;
+                        cout << "INITIAL Y VELOCITY: " << obj1->vyiGet() << endl;
+                        cout << "FINAL X VELOCITY: " << obj1->vxfGet() << endl;
+                        cout << "FINAL Y VELOCITY: " << obj1->vyfGet() << endl;
+                        cout << endl;
+                        cout << "For objects[" << j << "]:" << endl;
+                        cout << "INITIAL X VELOCITY: " << obj2->vxiGet() << endl;
+                        cout << "INITIAL Y VELOCITY: " << obj2->vyiGet() << endl;
+                        cout << "FINAL X VELOCITY: " << obj2->vxfGet() << endl;
+                        cout << "FINAL Y VELOCITY: " << obj2->vyfGet() << endl;
+                        cout << endl;
+                    }
+                }
+            }
+        }
+    }
     
     ofstream outputFile(outFilename.c_str(), ofstream::app);
     try {
