@@ -292,47 +292,60 @@ double Simulation::collisionDistance(Object* obj1, Object* obj2) {
 
 bool Simulation::checkCollision(Object* obj1, Object* obj2) {
     bool collides = false;
-    
-    //If statements are structured in this way so that collision directionality
-    //can be known and examined for potential future debugging purposes.
-    
-    double distX = xDistBetween(obj1, obj2);
-    double distY = yDistBetween(obj1, obj2);
-    double distW = (((obj1->getWidth() + obj2->getWidth()) / 2) * pixelSize);
-    double distH = (((obj1->getHeight() + obj2->getHeight()) / 2) * pixelSize);
-    
+    double distX = abs(xDistBetween(obj1, obj2));
+    double distY = abs(yDistBetween(obj1, obj2));
+    double width1 = obj1->getWidth() * pixelSize;
+    double width2 = obj2->getWidth() * pixelSize;
+    double height1 = obj1->getHeight() * pixelSize;
+    double height2 = obj2->getHeight() * pixelSize;
+    double distW = (width1 + width2) / 2;
+    double distH = (height1 + height2) / 2;
+    double x1 = obj1->xfGet();
+    double x2 = obj2->xfGet();
+    double y1 = obj1->yfGet();
+    double y2 = obj2->yfGet();
     
     //cout << "distX: " << distX << endl;
     //cout << "distW: " << distW << endl;
     //cout << "distY: " << distY << endl;
-    //cout << "distH: " << distH << endl;
-    //cout << ((distX <= distW) && (distY <= distH)) << endl;
+    //cout << "distH: " << distH << endl << endl;
     
-    //Object 1 right is to the right of Object 2 left AND dist is low enough
-    //(Also handles if they are exactly aligned)
-    if (((obj1->xiGet() + (obj1->getWidth() * pixelSize)) >= (obj2->xiGet())) &&
-        ((distX < distW) && (distY <= distH))){
-        //cout << "obj1 RIGHT to the right of obj2 LEFT" << endl;
-        collides = true;
-    }
-    //Object 1 left is to the left of Object 2 right AND dist is low enough
-    else if (((obj1->xiGet()) < (obj2->xiGet() + (obj2->getWidth() * pixelSize))) && 
-             ((distX < distW) && (distY <= distH))){
-        //cout << "obj1 LEFT to the left of obj2 RIGHT" << endl;
-        collides = true;
-    }
-    //Object 1 bottom is below Object 2 top AND dist is low enough
-    //(Also handles if they are exactly aligned)
-    else if (((obj1->yiGet() + (obj1->getHeight() * pixelSize)) >= (obj2->yiGet())) &&
-             ((distX < distW) && (distY <= distH))){
-        //cout << "obj1 BOTTOM below obj2 TOP" << endl;
-        collides = true;
-    }
-    //Object 1 top is above Object 2 bottom AND dist is low enough
-    else if (((obj1->yiGet()) < (obj2->yiGet() + (obj2->getHeight() * pixelSize))) && 
-             ((distX < distW) && (distY <= distH))){
-        //cout << "obj1 TOP above obj2 BOTTOM" << endl;
-        collides = true;
+    //Collision
+    if ((distX < distW) && (distY < distH)) {
+        //Side collision
+        if ((distX / distW) > (distY / distH)) {
+            //obj1 right hits obj2 left
+            if (((x1 + width1) >= x2) && (x1 < x2)) {
+                collides = true;
+                cout << "obj " << obj1->getObjectID() << " RIGHT hits obj ";
+                cout << obj2->getObjectID() << " LEFT" << endl;
+            }
+            //obj2 right hits obj1 left
+            if (((x2 + width2) >= x1) && (x2 < x1)) {
+                collides = true;
+                cout << "obj " << obj2->getObjectID() << " RIGHT hits obj ";
+                cout << obj1->getObjectID() << " LEFT" << endl;
+            }
+        }
+        //Top or bottom collision
+        else if ((distX / distW) < (distY / distH)) {
+            //obj1 bottom hits obj2 top
+            if (((y1 + height1) >= y2) && (y1 < y2)) {
+                collides = true;
+                cout << "obj " << obj1->getObjectID() << " BOTTOM hits obj ";
+                cout << obj2->getObjectID() << " TOP" << endl;
+            }
+            //obj2 bottom hits obj1 top
+            if (((y2 + height2) >= y1) && (y2 < y1)) {
+                collides = true;
+                cout << "obj " << obj2->getObjectID() << " BOTTOM hits obj ";
+                cout << obj1->getObjectID() << " TOP" << endl;
+            }
+        }
+        //Corner collision
+        else {
+            collides = true;
+        }
     }
     
     if (collides) {
@@ -587,18 +600,22 @@ void Simulation::deltaPos() {
             //collision isn't a thing, we examine all cases where i < j.
             //We only have to test if collidedNum is equal to collidedRef.
             //We also only need to test if the two objects' last collisions were with eachother
-            if ((i < j) &&
-               (((obj1->getLastCollided() != 
-                 obj2->getObjectID()) ||
-                 (obj1->getObjectID() != 
-                 obj2->getLastCollided())) ||
-                ((obj1->getLastCollided() == -1) || 
-                  (obj2->getLastCollided() == -1)))) {
-                                 
-                                 
+            int last1 = obj1->getLastCollided();
+            int last2 = obj2->getLastCollided();
+            int id1 = obj1->getObjectID();
+            int id2 = obj2->getObjectID();
+            
+            //NOTE: This will break in some ways once an object hits 0 velocity.
+            //Also, I think the vx/vy gets should be initial not final, but if
+            //There are major issues I could try switching to final.
+            bool vxPosThen = (obj1->vxColGet() > 0);
+            bool vxPosNow = (obj1->vxiGet() > 0);
+            bool vyPosThen = (obj1->vyColGet() > 0);
+            bool vyPosNow = (obj1->vyiGet() > 0);
+            if ((i < j) && (((last1 != id2) || (last2 != id1)) || 
+                            ((vxPosThen != vxPosNow) || (vyPosThen != vyPosNow)))) {
                 //cout << obj1->getLastCollided() << "    " << obj2->getLastCollided() << endl;
-                
-                
+
                 //MASSES, DISTANCES, AND LOCATIONS
                 double m2 = obj2->getMass();
                 double dBetween = distBetween(obj1, obj2);
@@ -620,6 +637,12 @@ void Simulation::deltaPos() {
                                  
                     //cout << "COLLISION between objects[" << i << "] ";
                     //cout << "and objects[" << j << "]" << endl;
+                    
+                    //Sets vxCol and vyCol variables
+                    obj1->vxColSet(obj1->vxfGet());
+                    obj1->vyColSet(obj1->vyfGet());
+                    obj2->vxColSet(obj2->vxfGet());
+                    obj2->vyColSet(obj2->vyfGet());
                                  
                 if (debugMode) {
                         cout << "COLLISION between objects[" << i << "] ";

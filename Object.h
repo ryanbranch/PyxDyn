@@ -47,6 +47,7 @@ class Object {
         int getNumElts();
         //Returns the element of dataPtr at the specified index
         int getElt(int index);
+        
         //Returns the last object with which the object collided;
         int getLastCollided();
         //Sets the last object with which the object collided();
@@ -55,6 +56,15 @@ class Object {
         int getObjectID();
         //Sets the object id
         int setObjectID(int id_);
+        //Gets the x velocity following the object's last collision
+        double vxColGet();
+        //Sets the x velocity following the object's last collision
+        double vxColSet(double vxCol_);
+        //Gets the y velocity following the object's last collision
+        double vyColGet();
+        //Sets the y velocity following the object's last collision
+        double vyColSet(double vyCol_);
+        
         //Function to build the data array
         void buildData();
         
@@ -137,8 +147,12 @@ class Object {
         //void pySet(double py_);
         
     private:
+        //COLLISION INFORMATION
         int lastCollided;
         int id;
+        double vxCol;
+        double vyCol;
+        
         //DISPLAY PROPERTIES
         int xPos;
         int yPos;
@@ -274,7 +288,6 @@ void Object::yPosSet(int pos_) {
 //Returns the number of elements that the data array does (or will) hold
 //NOTE: Should create some kind of invariant later to test this and make sure
 //      that it's actually the same size of the data array.
-//      Also would be a good idea to have a bool for whether data is full or not
 int Object::getNumElts() {
     if (dataFull) {
         return (3 * width * height) + 4;
@@ -314,6 +327,24 @@ int Object::getObjectID() {
 //Sets the object id
 int Object::setObjectID(int id_) {
     id = id_;
+}
+
+//Gets the x velocity following the object's last collision
+double Object::vxColGet() {
+    return vxCol;
+}
+//Sets the x velocity following the object's last collision
+double Object::vxColSet(double vxCol_) {
+    vxCol = vxCol_;
+}
+
+//Gets the y velocity following the object's last collision
+double Object::vyColGet() {
+    return vyCol;
+}
+//Sets the y velocity following the object's last collision
+double Object::vyColSet(double vyCol_) {
+    vyCol = vyCol_;
 }
 
 //Function to build the data array

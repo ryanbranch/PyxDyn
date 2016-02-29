@@ -378,8 +378,6 @@ void outCsv(Simulation* theSim) {
 }
 
 int main(int argc, char* argv[]) {
-    //NOTE: Add in a system so that numFrames can be generated from input file.
-    //      also timeInterval. These should be high priority because very easy.
     bool debugIt;
     string debugString;
     string outFilename;
