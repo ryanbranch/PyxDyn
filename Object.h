@@ -136,16 +136,6 @@ class Object {
         //Set function for vyf
         void vyfSet(double vyf_);
         
-        //MOMENTUM
-        //Get function for px
-        //double pxGet();
-        //Set function for px
-        //void pxSet(double px_);
-        //Get function for py
-        //double pyGet();
-        //Set function for py
-        //void pySet(double py_);
-        
     private:
         //COLLISION INFORMATION
         int lastCollided;
@@ -178,9 +168,6 @@ class Object {
         double vyi;
         double vxf;
         double vyf;
-        //x and y momentums, in (kg*m)/s
-        //double px;
-        //double py;
 };
 
 //DEFINITIONS:
@@ -223,30 +210,6 @@ Object::Object(int xPos_,
 Object::~Object(){
     delete ptrColor;
     delete[] ptrData;
-}
-
-//Assignment operator for Object
-Object& Object::operator= (const Object &rhs) {
-    //Check for self assignment
-    if (this == &rhs) {
-        return *this;
-    }
-    //Otherwise, edit the member variables, then return the Color
-    /*
-    red = rhs.red;
-    green = rhs.green;
-    blue = rhs.blue;
-    */
-    return *this;
-}
-
-//Copy constructor for Object
-Object::Object(const Object &other) {
-    /*
-    red = other.red;
-    green = other.green;
-    blue = other.blue;
-    */
 }
 
 //FUNCTIONS USED IN CALCULATION
@@ -513,27 +476,5 @@ double Object::vyfGet() {
 void Object::vyfSet(double vyf_) {
     vyf = vyf_;
 }
-
-
-
-//MOMENTUM
-
-//Get function for px
-//double Object::pxGet() {
-//    return px;
-//}
-//Set function for px
-//void Object::pxSet(double px_) {
-//    px = px_;
-//}
-
-//Get function for py
-//double Object::pyGet() {
-//    return py;
-//}
-//Set function for py
-//void Object::pySet(double py_) {
-//    py = py_;
-//}
 
 #endif //OBJECT_H

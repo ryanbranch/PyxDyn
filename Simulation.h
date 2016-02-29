@@ -87,20 +87,6 @@ class Simulation {
         
         //Returns the gravitational force between two objects, from the center
         double gForce(Object* obj1, Object* obj2);
-        //Returns the acceleration based on force and mass inputs
-        double accel(double force, double mass);
-        //Returns the change in velocity on time interval based on acceleration
-        double deltaVel(double accel);
-        //Updates the final x velocity of an object based on change in velocity
-        double updateVelX(double deltaVel, Object* obj);
-        //Updates the final y velocity of an object based on change in velocity
-        double updateVelY(double deltaVel, Object* obj);
-        //Returns the change in position on time interval based on acceleration
-        double deltaPos(double vel);
-        //Updates the final x position of an object based on change in position
-        double updatePosX(double deltaPos, Object* obj);
-        //Updates the final y position of an object based on change in position
-        double updatePosY(double deltaPos, Object* obj);
         //Calculates and applies the change in position for all objects
         void deltaPos();
     private:
@@ -263,8 +249,6 @@ void Simulation::setTimeInterval(int time) {
     timeInterval = time;
 }
 
-//Number of iterations to perform calculations for.  Essentially, how many
-//animation frames to generate
 //Get function for numIterations
 int Simulation::getNumIterations() {
     return numIterations;
@@ -292,6 +276,10 @@ double Simulation::collisionDistance(Object* obj1, Object* obj2) {
 
 bool Simulation::checkCollision(Object* obj1, Object* obj2) {
     bool collides = false;
+    bool sideCollision = false;
+    bool topCollision = false;
+    double m1 = obj1->getMass();
+    double m2 = obj2->getMass();
     double distX = abs(xDistBetween(obj1, obj2));
     double distY = abs(yDistBetween(obj1, obj2));
     double width1 = obj1->getWidth() * pixelSize;
@@ -305,11 +293,6 @@ bool Simulation::checkCollision(Object* obj1, Object* obj2) {
     double y1 = obj1->yfGet();
     double y2 = obj2->yfGet();
     
-    //cout << "distX: " << distX << endl;
-    //cout << "distW: " << distW << endl;
-    //cout << "distY: " << distY << endl;
-    //cout << "distH: " << distH << endl << endl;
-    
     //Collision
     if ((distX < distW) && (distY < distH)) {
         //Side collision
@@ -317,14 +300,16 @@ bool Simulation::checkCollision(Object* obj1, Object* obj2) {
             //obj1 right hits obj2 left
             if (((x1 + width1) >= x2) && (x1 < x2)) {
                 collides = true;
-                cout << "obj " << obj1->getObjectID() << " RIGHT hits obj ";
-                cout << obj2->getObjectID() << " LEFT" << endl;
+                sideCollision = true;
+                //cout << "obj " << obj1->getObjectID() << " RIGHT hits obj ";
+                //cout << obj2->getObjectID() << " LEFT" << endl;
             }
             //obj2 right hits obj1 left
             if (((x2 + width2) >= x1) && (x2 < x1)) {
                 collides = true;
-                cout << "obj " << obj2->getObjectID() << " RIGHT hits obj ";
-                cout << obj1->getObjectID() << " LEFT" << endl;
+                sideCollision = true;
+                //cout << "obj " << obj2->getObjectID() << " RIGHT hits obj ";
+                //cout << obj1->getObjectID() << " LEFT" << endl;
             }
         }
         //Top or bottom collision
@@ -332,14 +317,16 @@ bool Simulation::checkCollision(Object* obj1, Object* obj2) {
             //obj1 bottom hits obj2 top
             if (((y1 + height1) >= y2) && (y1 < y2)) {
                 collides = true;
-                cout << "obj " << obj1->getObjectID() << " BOTTOM hits obj ";
-                cout << obj2->getObjectID() << " TOP" << endl;
+                topCollision = true;
+                //cout << "obj " << obj1->getObjectID() << " BOTTOM hits obj ";
+                //cout << obj2->getObjectID() << " TOP" << endl;
             }
             //obj2 bottom hits obj1 top
             if (((y2 + height2) >= y1) && (y2 < y1)) {
                 collides = true;
-                cout << "obj " << obj2->getObjectID() << " BOTTOM hits obj ";
-                cout << obj1->getObjectID() << " TOP" << endl;
+                topCollision = true;
+                //cout << "obj " << obj2->getObjectID() << " BOTTOM hits obj ";
+                //cout << obj1->getObjectID() << " TOP" << endl;
             }
         }
         //Corner collision
@@ -351,8 +338,33 @@ bool Simulation::checkCollision(Object* obj1, Object* obj2) {
     if (collides) {
         obj1->setLastCollided(obj2->getObjectID());
         obj2->setLastCollided(obj1->getObjectID());
+        //Updates initial velocity variables
+        obj1->vxiSet(obj1->vxfGet());
+        obj1->vyiSet(obj1->vyfGet());                    
+        
+        //Computes new velocities, elastically
+        if (!topCollision) {
+            obj1->vxfSet((((m1 - m2) / (m1 + m2)) * obj1->vxiGet()) +
+                         (((2 * m2) / (m1 + m2)) * obj2->vxiGet()));
+            obj2->vxfSet((((2 * m1) / (m1 + m2)) * obj1->vxiGet()) -
+                         (((m1 - m2) / (m1 + m2)) * obj2->vxiGet()));
+        }
+        if (!sideCollision) {
+            obj1->vyfSet((((m1 - m2) / (m1 + m2)) * obj1->vyiGet()) +
+                         (((2 * m2) / (m1 + m2)) * obj2->vyiGet()));
+            obj2->vyfSet((((2 * m1) / (m1 + m2)) * obj1->vyiGet()) -
+                         (((m1 - m2) / (m1 + m2)) * obj2->vyiGet()));
+        }
+                     
+        //cout << "COLLISION between objects[" << i << "] ";
+        //cout << "and objects[" << j << "]" << endl;
+        
+        //Sets vxCol and vyCol variables
+        obj1->vxColSet(obj1->vxfGet());
+        obj1->vyColSet(obj1->vyfGet());
+        obj2->vxColSet(obj2->vxfGet());
+        obj2->vyColSet(obj2->vyfGet());
     }
-    
     return collides;
 }
 
@@ -390,38 +402,6 @@ double Simulation::yComponent(Object* obj1, Object* obj2) {
 double Simulation::gForce(Object* obj1, Object* obj2) {
     return((c_G * obj1->getMass() * obj2->getMass())/
            (pow(distBetween(obj1, obj2), 2))); 
-}
-//Returns the acceleration based on force and mass inputs
-double Simulation::accel(double force, double mass) {
-    return (force / mass);
-}
-//Returns the change in velocity on time interval based on acceleration
-double Simulation::deltaVel(double accel) {
-    return accel * timeInterval;
-}
-//Updates the final x velocity of an object based on change in velocity
-double Simulation::updateVelX(double deltaVel, Object* obj) {
-    obj->vxfSet(obj->vxiGet() + deltaVel);
-    return obj->vxfGet();
-}
-//Updates the final y velocity of an object based on change in velocity
-double Simulation::updateVelY(double deltaVel, Object* obj) {
-    obj->vyfSet(obj->vyiGet() + deltaVel);
-    return obj->vyfGet();
-}
-//Returns the change in position on time interval based on acceleration
-double Simulation::deltaPos(double vel) {
-    return vel * timeInterval;
-}
-//Updates the final x position of an object based on change in position
-double Simulation::updatePosX(double deltaPos, Object* obj) {
-    obj->xfSet(obj->xiGet() + deltaPos);
-    return obj->xfGet();
-}
-//Updates the final y position of an object based on change in position
-double Simulation::updatePosY(double deltaPos, Object* obj) {
-    obj->yfSet(obj->yiGet() + deltaPos);
-    return obj->yfGet();
 }
 
 //Calculates and applies the change in position for all objects
@@ -492,10 +472,6 @@ void Simulation::deltaPos() {
                     }
                 }
                 else {
-                    //I came up with these functions by hand.  It's much easier
-                    //to visualize if drawn out as a grid of i rows by j cols,
-                    //where the numerical position on the grid at any point is
-                    //equal to (i * numObjects + j)
                     int n = numObjects;
                     forces[2 * j] = -1 * forceGrid[2 * (j * n + i)];
                     forces[2 * j + 1] = -1 * forceGrid[2 * (j * n + i) + 1];
@@ -586,13 +562,10 @@ void Simulation::deltaPos() {
         //deletes forces array
         delete[] forces;
     }
-    //deletes forceGrid array
-    //delete[] forceGrid;    
     
     //Calculates and applies any changes in velocity due to collision
     for (int i = 0; i < numObjects; ++i) {
         Object* obj1 = objects[i];
-        double m1 = obj1->getMass();
         for (int j = 0; j < numObjects; ++j) {
             Object* obj2 = objects[j];
             //Since we only need to calculate collisions between any given pair
@@ -606,45 +579,20 @@ void Simulation::deltaPos() {
             int id2 = obj2->getObjectID();
             
             //NOTE: This will break in some ways once an object hits 0 velocity.
-            //Also, I think the vx/vy gets should be initial not final, but if
-            //There are major issues I could try switching to final.
+            //Also, I think the vx/vy gets should be final not initial, but if
+            //There are major issues I could try switching to initial.
             bool vxPosThen = (obj1->vxColGet() > 0);
-            bool vxPosNow = (obj1->vxiGet() > 0);
+            bool vxPosNow = (obj1->vxfGet() > 0);
             bool vyPosThen = (obj1->vyColGet() > 0);
-            bool vyPosNow = (obj1->vyiGet() > 0);
+            bool vyPosNow = (obj1->vyfGet() > 0);
             if ((i < j) && (((last1 != id2) || (last2 != id1)) || 
                             ((vxPosThen != vxPosNow) || (vyPosThen != vyPosNow)))) {
-                //cout << obj1->getLastCollided() << "    " << obj2->getLastCollided() << endl;
 
-                //MASSES, DISTANCES, AND LOCATIONS
-                double m2 = obj2->getMass();
-                double dBetween = distBetween(obj1, obj2);
-                //if ((dBetween < collisionDistance(obj1, obj2)) && checkCollision(obj1, obj2)) {
+                //If the two objects collide
                 if (checkCollision(obj1, obj2)) {
-                    //Updates initial velocity variables
-                    obj1->vxiSet(obj1->vxfGet());
-                    obj1->vyiSet(obj1->vyfGet());                    
-                    
-                    //Computes new velocities, elastically
-                    obj1->vxfSet((((m1 - m2) / (m1 + m2)) * obj1->vxiGet()) +
-                                 (((2 * m2) / (m1 + m2)) * obj2->vxiGet()));
-                    obj2->vxfSet((((2 * m1) / (m1 + m2)) * obj1->vxiGet()) -
-                                 (((m1 - m2) / (m1 + m2)) * obj2->vxiGet()));
-                    obj1->vyfSet((((m1 - m2) / (m1 + m2)) * obj1->vyiGet()) +
-                                 (((2 * m2) / (m1 + m2)) * obj2->vyiGet()));
-                    obj2->vyfSet((((2 * m1) / (m1 + m2)) * obj1->vyiGet()) -
-                                 (((m1 - m2) / (m1 + m2)) * obj2->vyiGet()));
-                                 
-                    //cout << "COLLISION between objects[" << i << "] ";
-                    //cout << "and objects[" << j << "]" << endl;
-                    
-                    //Sets vxCol and vyCol variables
-                    obj1->vxColSet(obj1->vxfGet());
-                    obj1->vyColSet(obj1->vyfGet());
-                    obj2->vxColSet(obj2->vxfGet());
-                    obj2->vyColSet(obj2->vyfGet());
-                                 
-                if (debugMode) {
+                    //NOTE: I have not combined these if statements, in case
+                    //      there is something to put here later on.
+                    if (debugMode) {
                         cout << "COLLISION between objects[" << i << "] ";
                         cout << "and objects[" << j << "]" << endl;
                         cout << "++++++++++++++++++++++++++++++++" << endl;
@@ -701,6 +649,5 @@ void Simulation::deltaPos() {
         exit(1);
     }
 }
-
 
 #endif //SIMULATION_H
